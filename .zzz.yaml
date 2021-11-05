@@ -1,0 +1,15 @@
+title: zzz
+frequency: 3
+dirfilter:
+- tmp
+- node_modules
+ext:
+- go
+- js
+enablerun: false
+action:
+  before:
+  - "npm install"
+  after:
+  - "npm run build"
+link: https://github.com/midoks/zzz
