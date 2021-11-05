@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "webpack --progress --env.bundle-engine",
+    "build": "webpack",
     "dev": "npx webpack",
     "test": "echo \"Error: no test specified\" && exit 0"
   },
@@ -16,6 +16,21 @@
   },
   "dependencies": {
     "dplayer": "^1.23.0",
-    "hls": "^0.0.1"
-  }
+    "hls.js": "^0.8.9",
+    "reconnecting-websocket": "^3.2.2",
+    "ua-parser-js": "^0.7.17"
+  }, 
+  "keywords": [
+    "html5",
+    "WebRTC",
+    "video",
+    "mse",
+    "player",
+    "p2p",
+    "peer-to-peer",
+    "hls",
+    "mesh",
+    "webrtc data channel",
+    "http live streaming"
+  ]
 }
