@@ -9,7 +9,7 @@ ext:
 enablerun: false
 action:
   before:
-  - "npm install"
+  - echo "npm install"
   after:
-  - "npm run build"
+  - "npm run dev"
 link: https://github.com/midoks/zzz
