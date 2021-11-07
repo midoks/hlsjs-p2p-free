@@ -1,5 +1,5 @@
 title: zzz
-frequency: 3
+frequency: 5
 dirfilter:
 - tmp
 - node_modules

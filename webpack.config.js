@@ -17,11 +17,12 @@ const uglifyJsOptions = {
     },
     output: {
         comments: false,  // remove all comments
-        preamble: "/* A P2P-CDN supporting hls player built on WebRTC Data Channels API. @author XieTing <86755838@qq.com> <https://github.com/snowinszu> */"
+        preamble: "/* A P2P-CDN supporting hls player built on WebRTC Data Channels API. @author midoks <midoks@163.com> <https://github.com/midoks> */"
     }
 };
 
-function getConstantsForConfig(type) {                                             //嵌入全局变量
+//嵌入全局变量
+function getConstantsForConfig(type) {                                             
     return {
         __VERSION__: JSON.stringify(pkgJson.version),
     };
@@ -52,7 +53,7 @@ function getPluginsForConfig(minify = false, type) {
             // new webpack.optimize.UglifyJsPlugin(uglifyJsOptions),
             new webpack.LoaderOptionsPlugin({
                 minimize: true,
-                debug: true
+                debug: false
             })
         ]);
     }
@@ -61,7 +62,6 @@ function getPluginsForConfig(minify = false, type) {
 }
 
 const commonConfig = {
-
     module: {
         rules: [
             {

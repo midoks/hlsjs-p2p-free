@@ -1,3 +1,8 @@
+// 文档地址
+// https://hls-js.netlify.app/api-docs
+
+
+
 // import wwws from './ws.js';
 // import {sum,square} from './utils.js';
 // console.log(sum(1,2));
@@ -6,6 +11,7 @@ console.log("start...");
 
 
 import Hlsjs from 'hls.js';
+import p2p from './p2p.js';
 
 let recommendedHlsjsConfig = {
     maxBufferSize: 0,
@@ -14,10 +20,10 @@ let recommendedHlsjsConfig = {
     fragLoadingTimeOut: 4000,              // used by fragment-loader
 };
 
-class CDNByeHlsjs extends Hlsjs {
+class P2PHlsjs extends Hlsjs {
 
     static get P2PEvents() {
-    	console.log(P2PEngine.Events);
+    	console.log("p2p:",P2PEngine.Events);
         return P2PEngine.Events;
     }
 
@@ -27,7 +33,7 @@ class CDNByeHlsjs extends Hlsjs {
 
     constructor(config = {}) {
 
-    	console.log(config);
+    	console.log("p2p constructor:",config);
 
         let p2pConfig = config.p2pConfig || {};
         delete config.p2pConfig;
@@ -36,8 +42,8 @@ class CDNByeHlsjs extends Hlsjs {
 
         super(mergedHlsjsConfig);
 
-        // if (P2PEngine.WEBRTC_SUPPORT) {
-        //     this.engine = new P2PEngine(this, p2pConfig);
+        // if (p2p.WEBRTC_SUPPORT) {
+            this.engine = new p2p(this, p2pConfig);
         // }
 
     }
@@ -53,4 +59,6 @@ class CDNByeHlsjs extends Hlsjs {
 
 }
 
-export default CDNByeHlsjs;
+P2PHlsjs.engineVersion = p2p.version;  
+
+export default P2PHlsjs;
