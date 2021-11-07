@@ -3,6 +3,7 @@ const path = require('path');
 const webpack = require('webpack');
 
 
+// console.log(webpack);
 const uglifyJsOptions = {
     screwIE8: true,
     stats: true,
@@ -16,26 +17,24 @@ const uglifyJsOptions = {
         eval: true
     },
     output: {
-        comments: false,  // remove all comments
+        comments: true,  // remove all comments
         preamble: "/* A P2P-CDN supporting hls player built on WebRTC Data Channels API. @author midoks <midoks@163.com> <https://github.com/midoks> */"
     }
 };
 
 //嵌入全局变量
 function getConstantsForConfig(type) {                                             
-    return {
+    const buildConstants = {
         __VERSION__: JSON.stringify(pkgJson.version),
     };
+    return buildConstants;
 }
 
 function getAliasesForLightDist() {
     let aliases = {};
 
     aliases = Object.assign({}, aliases, {
-        './bittorrent': './empty.js'
     });
-
-
     return aliases;
 }
 
@@ -50,7 +49,7 @@ function getPluginsForConfig(minify = false, type) {
     if (minify) {
         // minification plugins.
         return plugins.concat([
-            // new webpack.optimize.UglifyJsPlugin(uglifyJsOptions),
+            new webpack.LoaderOptionsPlugin(uglifyJsOptions),
             new webpack.LoaderOptionsPlugin({
                 minimize: true,
                 debug: false
@@ -63,12 +62,16 @@ function getPluginsForConfig(minify = false, type) {
 
 const commonConfig = {
     module: {
+        strictExportPresence: true,
         rules: [
             {
-                test: /\.js$/,
+                test: /\.(ts|js)$/,
                 exclude: [
                     path.resolve(__dirname, 'node_modules')
-                ]
+                ],
+                use: {
+                    loader: 'babel-loader',
+                }
             }
         ]
     }
@@ -93,27 +96,35 @@ const multiConfig = [
     devtool: 'source-map',
   },
   {
-  	mode: 'production',
     name: 'release',
+  	mode: 'production',
     entry: './src/index.js',
     output: {
-    	chunkFilename: '[name].js',
         filename: 'p2p.min.js',
+    	chunkFilename: '[name].js',
         path: path.resolve(__dirname, 'dist'),
-        // publicPath: '/src/',
+        publicPath: '/dist/',
         library: ['Hls'],
-        libraryTarget: 'umd'
+        libraryTarget: 'umd',
+        libraryExport: 'default',
+        globalObject: 'this',
     },
     plugins: getPluginsForConfig(true)
 	},
-].map(fragment => Object.assign({}, commonConfig, fragment));;
+].map(fragment => Object.assign({}, commonConfig, fragment));
+
+
 module.exports = (envArgs) => {
-  const requestedConfigs = Object.keys(envArgs).filter(
-    (key) => !/^WEBPACK_/.test(key)
-  );
-  let configs;
 
-  configs = multiConfig;
+    const requestedConfigs = Object.keys(envArgs).filter(
+        (key) => !/^WEBPACK_/.test(key)
+    );
+    let configs;
 
+    configs = multiConfig;
+
+    console.log(
+    `Building configs: ${configs.map((config) => config.name).join(', ')}.\n`
+    );
   return configs;
 };

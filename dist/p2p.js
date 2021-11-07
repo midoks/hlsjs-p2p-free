@@ -11,6 +11,398 @@
 return /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
+/***/ "./src/config.js":
+/*!***********************!*\
+  !*** ./src/config.js ***!
+  \***********************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+//时间单位统一为秒
+let defaultP2PConfig = {
+  key: 'free',
+  //连接tracker服务器的API key
+  wsSignalerAddr: 'ws://127.0.0.1/ws',
+  //信令服务器地址
+  wsMaxRetries: 3,
+  //发送数据重试次数
+  wsReconnectInterval: 5,
+  //websocket重连时间间隔
+  p2pEnabled: true,
+  //是否开启P2P，默认true
+  dcRequestTimeout: 3,
+  //datachannel接收二进制数据的超时时间
+  dcUploadTimeout: 3,
+  //datachannel上传二进制数据的超时时间
+  dcPings: 5,
+  //datachannel发送ping数据包的数量
+  dcTolerance: 4,
+  //请求超时或错误多少次淘汰该peer
+  packetSize: 16 * 1024,
+  //每次通过datachannel发送的包的大小
+  maxBufSize: 1024 * 1024 * 50,
+  //p2p缓存的最大数据量
+  loadTimeout: 5,
+  //p2p下载的超时时间
+  enableLogUpload: false,
+  //上传log到服务器，默认true
+  logUploadAddr: "ws://127.0.0.1/trace",
+  //log上传地址
+  logUploadLevel: 'warn',
+  //log上传level，分为debug、info、warn、error、none，默认warn
+  logLevel: 'none' //log的level，分为debug、info、warn、error、none，默认none
+
+};
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (defaultP2PConfig);
+
+/***/ }),
+
+/***/ "./src/core/index.js":
+/*!***************************!*\
+  !*** ./src/core/index.js ***!
+  \***************************/
+/***/ ((module) => {
+
+module.exports = function getBrowserRTC() {
+  if (typeof globalThis === 'undefined') return null;
+  var wrtc = {
+    RTCPeerConnection: globalThis.RTCPeerConnection || globalThis.mozRTCPeerConnection || globalThis.webkitRTCPeerConnection,
+    RTCSessionDescription: globalThis.RTCSessionDescription || globalThis.mozRTCSessionDescription || globalThis.webkitRTCSessionDescription,
+    RTCIceCandidate: globalThis.RTCIceCandidate || globalThis.mozRTCIceCandidate || globalThis.webkitRTCIceCandidate
+  };
+  if (!wrtc.RTCPeerConnection) return null;
+  return wrtc;
+};
+
+/***/ }),
+
+/***/ "./src/p2p.js":
+/*!********************!*\
+  !*** ./src/p2p.js ***!
+  \********************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var events__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! events */ "./node_modules/events/events.js");
+/* harmony import */ var events__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(events__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var ua_parser_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ua-parser-js */ "./node_modules/ua-parser-js/src/ua-parser.js");
+/* harmony import */ var ua_parser_js__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(ua_parser_js__WEBPACK_IMPORTED_MODULE_1__);
+/* harmony import */ var _utils_logger__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./utils/logger */ "./src/utils/logger.js");
+/* harmony import */ var _config__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./config */ "./src/config.js");
+/* harmony import */ var _core__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./core */ "./src/core/index.js");
+/* harmony import */ var _core__WEBPACK_IMPORTED_MODULE_4___default = /*#__PURE__*/__webpack_require__.n(_core__WEBPACK_IMPORTED_MODULE_4__);
+
+
+
+
+
+const uaParserResult = new (ua_parser_js__WEBPACK_IMPORTED_MODULE_1___default())().getResult();
+
+class p2p extends (events__WEBPACK_IMPORTED_MODULE_0___default()) {
+  constructor(hlsjs, p2pConfig) {
+    super();
+    this.config = Object.assign({}, _config__WEBPACK_IMPORTED_MODULE_3__["default"], p2pConfig);
+    this.hlsjs = hlsjs; //默认开启P2P
+
+    this.p2pEnabled = this.config.disableP2P === false ? false : true;
+    hlsjs.config.currLoaded = hlsjs.config.currPlay = 0;
+
+    const onLevelLoaded = (event, data) => {
+      console.log('onLevelLoaded', event, data);
+      const isLive = data.details.live;
+      this.config.live = isLive;
+      let channel = hlsjs.url.split('?')[0]; //初始化logger
+
+      let logger = new _utils_logger__WEBPACK_IMPORTED_MODULE_2__["default"](this.config, channel);
+      this.hlsjs.config.logger = this.logger = logger;
+
+      this._init(channel);
+
+      hlsjs.off(hlsjs.constructor.Events.LEVEL_LOADED, onLevelLoaded);
+    };
+
+    hlsjs.on(hlsjs.constructor.Events.LEVEL_LOADED, onLevelLoaded);
+  }
+
+  _init(channel) {
+    console.log('_init', channel);
+    const {
+      logger
+    } = this; //上传浏览器信息
+
+    let browserInfo = {
+      browser: uaParserResult.browser.name,
+      device: uaParserResult.device.type === 'mobile' ? 'mobile' : 'PC',
+      os: uaParserResult.os.name
+    };
+    this.hlsjs.config.p2pEnabled = this.p2pEnabled; //实例化BufferManager
+    // this.bufMgr = new BufferManager(this, this.config);
+    // this.hlsjs.config.bufMgr = this.bufMgr;
+    //实例化Fetcher
+    // let fetcher = new Fetcher(this, this.config.key, window.encodeURIComponent(channel), this.config.announce, browserInfo);
+    // this.fetcher = fetcher;
+    // //实例化tracker服务器
+    // this.signaler = new Tracker(this, fetcher, this.config);
+    // this.signaler.scheduler.bufferManager = this.bufMgr;
+    // //替换fLoader
+    // this.hlsjs.config.fLoader = FragLoader;
+    // //向fLoader导入scheduler
+    // this.hlsjs.config.scheduler = this.signaler.scheduler;
+    // //在fLoader中使用fetcher
+    // this.hlsjs.config.fetcher = fetcher;
+
+    this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_LOADING, (id, data) => {
+      // console.log('FRAG_LOADING: ' + JSON.stringify(data.frag));
+      console.log('FRAG_LOADING: ', data.frag);
+      logger.debug('FRAG_LOADING: ' + data.frag.sn); // this.signaler.currentLoadingSN = data.frag.sn;
+    }); //防止重复连接ws
+    // this.signalTried = false;                                                   
+
+    this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_LOADED, (id, data) => {
+      console.log(this.hlsjs.constructor.Events.FRAG_LOADED, data); //let sn = data.frag.sn;
+      //this.hlsjs.config.currLoaded = sn;
+      //用于BT算法
+      //this.signaler.currentLoadedSN = sn;                                
+      //this.hlsjs.config.currLoadedDuration = data.frag.duration;
+
+      let bitrate = Math.round(data.frag.stats.loaded * 8 / data.frag.duration);
+      console.log('bitrate:', bitrate); //&& !this.signaler.connected
+
+      if (!this.signalTried && this.config.p2pEnabled) {// this.signaler.scheduler.bitrate = bitrate;
+        // logger.info(`FRAG_LOADED bitrate ${bitrate}`);
+        // this.signaler.resumeP2P();
+        // this.signalTried = true;
+      } // this.streamingRate = (this.streamingRate*this.fragLoadedCounter + bitrate)/(++this.fragLoadedCounter);
+      // this.signaler.scheduler.streamingRate = Math.floor(this.streamingRate);
+      // if (!data.frag.loadByHTTP) {
+      //     data.frag.loadByP2P = false;
+      //     data.frag.loadByHTTP = true;
+      // }
+
+    });
+    this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_CHANGED, (id, data) => {
+      // log('FRAG_CHANGED: '+JSON.stringify(data.frag, null, 2));
+      console.log('FRAG_CHANGED: ' + data.frag.sn);
+      const sn = data.frag.sn;
+      this.hlsjs.config.currPlay = sn; // this.signaler.currentPlaySN = sn;
+    }); // this.hlsjs.on(this.hlsjs.constructor.Events.ERROR, (event, data) => {
+    //     logger.error(`errorType ${data.type} details ${data.details} errorFatal ${data.fatal}`);
+    //     const errDetails = this.hlsjs.constructor.ErrorDetails;
+    //     switch (data.details) {
+    //         case errDetails.FRAG_LOAD_ERROR:
+    //         case errDetails.FRAG_LOAD_TIMEOUT:
+    //             this.fetcher.errsFragLoad ++;
+    //             break;
+    //         case errDetails.BUFFER_STALLED_ERROR:
+    //             this.fetcher.errsBufStalled ++;
+    //             break;
+    //         case errDetails.INTERNAL_EXCEPTION:
+    //             this.fetcher.errsInternalExpt ++;
+    //             break;
+    //         default:
+    //     }
+    // });
+    // this.hlsjs.on(this.hlsjs.constructor.Events.DESTROYING, () => {
+    //     // log('DESTROYING: '+JSON.stringify(frag));
+    //     this.signaler.destroy();
+    //     this.signaler = null;
+    // });
+  } //停止p2p
+
+
+  disableP2P() {// const { logger } = this;
+    // logger.warn(`disableP2P`);
+    // if (this.p2pEnabled) {
+    //     this.p2pEnabled = false;
+    //     this.config.p2pEnabled = this.hlsjs.config.p2pEnabled = this.p2pEnabled;
+    //     if (this.signaler) {
+    //         this.signaler.stopP2P();
+    //     }
+    // }
+  } //在停止的情况下重新启动P2P
+
+
+  enableP2P() {// const { logger } = this;
+    // logger.warn(`enableP2P`);
+    // if (!this.p2pEnabled) {
+    //     this.p2pEnabled = true;
+    //     this.config.p2pEnabled = this.hlsjs.config.p2pEnabled = this.p2pEnabled;
+    //     if (this.signaler) {
+    //         this.signaler.resumeP2P();
+    //     }
+    // }
+  }
+
+}
+
+p2p.WEBRTC_SUPPORT = !!_core__WEBPACK_IMPORTED_MODULE_4___default()();
+p2p.version = "0.0.1";
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (p2p);
+
+/***/ }),
+
+/***/ "./src/utils/logger.js":
+/*!*****************************!*\
+  !*** ./src/utils/logger.js ***!
+  \*****************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var reconnecting_websocket__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! reconnecting-websocket */ "./node_modules/reconnecting-websocket/dist/index.js");
+/* harmony import */ var reconnecting_websocket__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(reconnecting_websocket__WEBPACK_IMPORTED_MODULE_0__);
+
+const logTypes = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3,
+  none: 4
+};
+const typesP = ['_debugP', '_infoP', '_warnP', '_errorP'];
+const typesU = ['_debugU', '_infoU', '_warnU', '_errorU'];
+
+class Logger {
+  constructor(config, channel) {
+    this.config = config;
+    this.connected = false;
+
+    if (config.enableLogUpload) {
+      try {
+        this._ws = this._initWs(channel);
+      } catch (e) {
+        this._ws = null;
+      }
+    }
+
+    if (!(config.logLevel in logTypes)) config.logLevel = 'none';
+    if (!(config.logUploadLevel in logTypes)) config.logUploadLevel = 'none';
+
+    for (let i = 0; i < logTypes[config.logLevel]; i++) {
+      this[typesP[i]] = noop;
+    }
+
+    for (let i = 0; i < logTypes[config.logUploadLevel]; i++) {
+      this[typesU[i]] = noop;
+    }
+
+    this.identifier = '';
+  }
+
+  debug(msg) {
+    this._debugP(msg);
+
+    this._debugU(msg);
+  }
+
+  info(msg) {
+    this._infoP(msg);
+
+    this._infoU(msg);
+  }
+
+  warn(msg) {
+    this._warnP(msg);
+
+    this._warnU(msg);
+  }
+
+  error(msg) {
+    this._errorP(msg);
+
+    this._errorU(msg);
+  }
+
+  _debugP(msg) {
+    console.log(msg);
+  }
+
+  _infoP(msg) {
+    console.info(msg);
+  }
+
+  _warnP(msg) {
+    console.warn(msg);
+  }
+
+  _errorP(msg) {
+    console.error(msg);
+  }
+
+  _debugU(msg) {
+    msg = `[${this.identifier} debug] > ${msg}`;
+
+    this._uploadLog(msg);
+  }
+
+  _infoU(msg) {
+    msg = `[${this.identifier} info] > ${msg}`;
+
+    this._uploadLog(msg);
+  }
+
+  _warnU(msg) {
+    msg = `[${this.identifier} warn] > ${msg}`;
+
+    this._uploadLog(msg);
+  }
+
+  _errorU(msg) {
+    msg = `[${this.identifier} error] > ${msg}`;
+
+    this._uploadLog(msg);
+  }
+
+  _uploadLog(msg) {
+    if (!this.connected) return;
+
+    this._ws.send(msg);
+  }
+
+  _initWs(channel) {
+    const wsOptions = {
+      maxRetries: this.config.wsMaxRetries,
+      minReconnectionDelay: this.config.wsReconnectInterval * 1000
+    };
+    let ws = new (reconnecting_websocket__WEBPACK_IMPORTED_MODULE_0___default())(this.config.logUploadAddr + `?info_hash=${window.encodeURIComponent(channel)}`, undefined, wsOptions);
+
+    ws.onopen = () => {
+      this.debug('Log websocket connection opened');
+      this.connected = true;
+    }; // ws.onmessage = (e) => {
+    //
+    //
+    // };
+    //websocket断开时清除datachannel
+
+
+    ws.onclose = () => {
+      this.warn(`Log websocket closed`);
+      this.connected = false;
+    };
+
+    return ws;
+  }
+
+}
+
+function noop() {}
+
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (Logger);
+
+/***/ }),
+
 /***/ "./node_modules/events/events.js":
 /*!***************************************!*\
   !*** ./node_modules/events/events.js ***!
@@ -28794,427 +29186,6 @@ var __WEBPACK_AMD_DEFINE_RESULT__;//////////////////////////////////////////////
 })(typeof window === 'object' ? window : this);
 
 
-/***/ }),
-
-/***/ "./src/config.js":
-/*!***********************!*\
-  !*** ./src/config.js ***!
-  \***********************/
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
-/* harmony export */ });
-
-//时间单位统一为秒
-let defaultP2PConfig = {
-    key: 'free',                                //连接tracker服务器的API key
-
-    wsSignalerAddr: 'ws://127.0.0.1/ws',        //信令服务器地址
-    wsMaxRetries: 3,                            //发送数据重试次数
-    wsReconnectInterval: 5,                     //websocket重连时间间隔
-
-    p2pEnabled: true,                           //是否开启P2P，默认true
-
-    dcRequestTimeout: 3,                        //datachannel接收二进制数据的超时时间
-    dcUploadTimeout: 3,                         //datachannel上传二进制数据的超时时间
-    dcPings: 5,                                 //datachannel发送ping数据包的数量
-    dcTolerance: 4,                             //请求超时或错误多少次淘汰该peer
-
-    packetSize: 16*1024,                        //每次通过datachannel发送的包的大小
-    maxBufSize: 1024*1024*50,                   //p2p缓存的最大数据量
-    loadTimeout: 5,                             //p2p下载的超时时间
-
-    enableLogUpload: false,                      //上传log到服务器，默认true
-    logUploadAddr: "ws://127.0.0.1/trace",       //log上传地址
-    logUploadLevel: 'warn',                      //log上传level，分为debug、info、warn、error、none，默认warn
-    logLevel: 'none',                            //log的level，分为debug、info、warn、error、none，默认none
-
-};
-
-
-
-
-/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (defaultP2PConfig);
-
-
-/***/ }),
-
-/***/ "./src/core/index.js":
-/*!***************************!*\
-  !*** ./src/core/index.js ***!
-  \***************************/
-/***/ ((module) => {
-
-
-module.exports = function getBrowserRTC () {
-  if (typeof globalThis === 'undefined') return null
-  var wrtc = {
-    RTCPeerConnection: globalThis.RTCPeerConnection || globalThis.mozRTCPeerConnection ||
-      globalThis.webkitRTCPeerConnection,
-    RTCSessionDescription: globalThis.RTCSessionDescription ||
-      globalThis.mozRTCSessionDescription || globalThis.webkitRTCSessionDescription,
-    RTCIceCandidate: globalThis.RTCIceCandidate || globalThis.mozRTCIceCandidate ||
-      globalThis.webkitRTCIceCandidate
-  }
-  if (!wrtc.RTCPeerConnection) return null
-  return wrtc
-}
-
-/***/ }),
-
-/***/ "./src/p2p.js":
-/*!********************!*\
-  !*** ./src/p2p.js ***!
-  \********************/
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
-/* harmony export */ });
-/* harmony import */ var events__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! events */ "./node_modules/events/events.js");
-/* harmony import */ var events__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(events__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var ua_parser_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ua-parser-js */ "./node_modules/ua-parser-js/src/ua-parser.js");
-/* harmony import */ var ua_parser_js__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(ua_parser_js__WEBPACK_IMPORTED_MODULE_1__);
-/* harmony import */ var _utils_logger__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./utils/logger */ "./src/utils/logger.js");
-/* harmony import */ var _config__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./config */ "./src/config.js");
-/* harmony import */ var _core__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./core */ "./src/core/index.js");
-/* harmony import */ var _core__WEBPACK_IMPORTED_MODULE_4___default = /*#__PURE__*/__webpack_require__.n(_core__WEBPACK_IMPORTED_MODULE_4__);
-
-
-
-
-
-
-
-
-
-
-const uaParserResult = (new (ua_parser_js__WEBPACK_IMPORTED_MODULE_1___default())()).getResult();
-
-class p2p extends (events__WEBPACK_IMPORTED_MODULE_0___default()) {
-
-	constructor(hlsjs, p2pConfig) {
-
-        super();
-
-        this.config = Object.assign({}, _config__WEBPACK_IMPORTED_MODULE_3__["default"], p2pConfig);
-        this.hlsjs = hlsjs;
-
-         //默认开启P2P
-        this.p2pEnabled = this.config.disableP2P === false ? false : true;                                     
-        hlsjs.config.currLoaded = hlsjs.config.currPlay = 0;
-        
-        const onLevelLoaded = (event, data) => {
-
-        	console.log('onLevelLoaded',event, data);
-
-            const isLive = data.details.live;
-            this.config.live = isLive;
-            let channel = hlsjs.url.split('?')[0];
-
-            //初始化logger
-            let logger = new _utils_logger__WEBPACK_IMPORTED_MODULE_2__["default"](this.config, channel);
-            this.hlsjs.config.logger = this.logger = logger;
-
-            this._init(channel);
-            hlsjs.off(hlsjs.constructor.Events.LEVEL_LOADED, onLevelLoaded);
-        };
-
-        hlsjs.on(hlsjs.constructor.Events.LEVEL_LOADED, onLevelLoaded);
-
-
-        //streaming rate
-        // this.streamingRate = 0;                        //单位bps
-        // this.fragLoadedCounter = 0;
-    }
-
-     _init(channel) {
-     	console.log('_init',channel);
-        const { logger } = this;
-        //上传浏览器信息
-        let browserInfo = {
-            browser: uaParserResult.browser.name,
-            device: uaParserResult.device.type === 'mobile' ? 'mobile' : 'PC',
-            os: uaParserResult.os.name
-        };
-
-
-        this.hlsjs.config.p2pEnabled = this.p2pEnabled;
-        //实例化BufferManager
-        // this.bufMgr = new BufferManager(this, this.config);
-        // this.hlsjs.config.bufMgr = this.bufMgr;
-
-
-        //实例化Fetcher
-        // let fetcher = new Fetcher(this, this.config.key, window.encodeURIComponent(channel), this.config.announce, browserInfo);
-        // this.fetcher = fetcher;
-        // //实例化tracker服务器
-        // this.signaler = new Tracker(this, fetcher, this.config);
-        // this.signaler.scheduler.bufferManager = this.bufMgr;
-        // //替换fLoader
-        // this.hlsjs.config.fLoader = FragLoader;
-        // //向fLoader导入scheduler
-        // this.hlsjs.config.scheduler = this.signaler.scheduler;
-        // //在fLoader中使用fetcher
-        // this.hlsjs.config.fetcher = fetcher;
-
-
-        this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_LOADING, (id, data) => {
-            // console.log('FRAG_LOADING: ' + JSON.stringify(data.frag));
-            console.log('FRAG_LOADING: ',data.frag);
-            logger.debug('FRAG_LOADING: ' + data.frag.sn);
-            // this.signaler.currentLoadingSN = data.frag.sn;
-
-        });
-
-
-        //防止重复连接ws
-        // this.signalTried = false;                                                   
-        this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_LOADED, (id, data) => {
-
-        	console.log(this.hlsjs.constructor.Events.FRAG_LOADED, data);
-            //let sn = data.frag.sn;
-            //this.hlsjs.config.currLoaded = sn;
-
-            //用于BT算法
-            //this.signaler.currentLoadedSN = sn;                                
-            //this.hlsjs.config.currLoadedDuration = data.frag.duration;
-            let bitrate = Math.round(data.frag.stats.loaded*8/data.frag.duration);
-            console.log('bitrate:',bitrate);
-            //&& !this.signaler.connected
-            if (!this.signalTried  && this.config.p2pEnabled) {
-
-                // this.signaler.scheduler.bitrate = bitrate;
-                // logger.info(`FRAG_LOADED bitrate ${bitrate}`);
-
-                // this.signaler.resumeP2P();
-                // this.signalTried = true;
-            }
-            // this.streamingRate = (this.streamingRate*this.fragLoadedCounter + bitrate)/(++this.fragLoadedCounter);
-            // this.signaler.scheduler.streamingRate = Math.floor(this.streamingRate);
-            // if (!data.frag.loadByHTTP) {
-            //     data.frag.loadByP2P = false;
-            //     data.frag.loadByHTTP = true;
-            // }
-        });
-
-        this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_CHANGED, (id, data) => {
-            // log('FRAG_CHANGED: '+JSON.stringify(data.frag, null, 2));
-            console.log('FRAG_CHANGED: '+data.frag.sn);
-            const sn = data.frag.sn;
-            this.hlsjs.config.currPlay = sn;
-            // this.signaler.currentPlaySN = sn;
-        });
-
-        // this.hlsjs.on(this.hlsjs.constructor.Events.ERROR, (event, data) => {
-        //     logger.error(`errorType ${data.type} details ${data.details} errorFatal ${data.fatal}`);
-        //     const errDetails = this.hlsjs.constructor.ErrorDetails;
-        //     switch (data.details) {
-        //         case errDetails.FRAG_LOAD_ERROR:
-        //         case errDetails.FRAG_LOAD_TIMEOUT:
-        //             this.fetcher.errsFragLoad ++;
-        //             break;
-        //         case errDetails.BUFFER_STALLED_ERROR:
-        //             this.fetcher.errsBufStalled ++;
-        //             break;
-        //         case errDetails.INTERNAL_EXCEPTION:
-        //             this.fetcher.errsInternalExpt ++;
-        //             break;
-        //         default:
-        //     }
-        // });
-
-        // this.hlsjs.on(this.hlsjs.constructor.Events.DESTROYING, () => {
-        //     // log('DESTROYING: '+JSON.stringify(frag));
-        //     this.signaler.destroy();
-        //     this.signaler = null;
-
-        // });
-    }
-
-
-    //停止p2p
-    disableP2P() {                                              
-        // const { logger } = this;
-        // logger.warn(`disableP2P`);
-        // if (this.p2pEnabled) {
-        //     this.p2pEnabled = false;
-        //     this.config.p2pEnabled = this.hlsjs.config.p2pEnabled = this.p2pEnabled;
-        //     if (this.signaler) {
-        //         this.signaler.stopP2P();
-        //     }
-        // }
-    }
-
-    //在停止的情况下重新启动P2P
-    enableP2P() {                                               
-        // const { logger } = this;
-        // logger.warn(`enableP2P`);
-        // if (!this.p2pEnabled) {
-        //     this.p2pEnabled = true;
-        //     this.config.p2pEnabled = this.hlsjs.config.p2pEnabled = this.p2pEnabled;
-        //     if (this.signaler) {
-        //         this.signaler.resumeP2P();
-        //     }
-        // }
-    }
-}
-
-
-p2p.WEBRTC_SUPPORT = !!_core__WEBPACK_IMPORTED_MODULE_4___default()();
-p2p.version = "0.0.1";
-/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (p2p);
-
-
-
-
-/***/ }),
-
-/***/ "./src/utils/logger.js":
-/*!*****************************!*\
-  !*** ./src/utils/logger.js ***!
-  \*****************************/
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
-/* harmony export */ });
-/* harmony import */ var reconnecting_websocket__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! reconnecting-websocket */ "./node_modules/reconnecting-websocket/dist/index.js");
-/* harmony import */ var reconnecting_websocket__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(reconnecting_websocket__WEBPACK_IMPORTED_MODULE_0__);
-
-
-const logTypes = {
-    debug: 0,
-    info: 1,
-    warn: 2,
-    error: 3,
-    none: 4,
-};
-
-const typesP = ['_debugP', '_infoP', '_warnP', '_errorP'];
-const typesU = ['_debugU', '_infoU', '_warnU', '_errorU'];
-
-class Logger {
-    constructor(config, channel) {
-
-        this.config = config;
-        this.connected = false;
-        if (config.enableLogUpload) {
-            try {
-                this._ws = this._initWs(channel);
-            } catch (e) {
-                this._ws = null;
-            }
-        }
-        if (!(config.logLevel in logTypes)) config.logLevel = 'none';
-        if (!(config.logUploadLevel in logTypes)) config.logUploadLevel = 'none';
-        for (let i=0;i<logTypes[config.logLevel];i++) {
-            this[typesP[i]] = noop;
-        }
-        for (let i=0;i<logTypes[config.logUploadLevel];i++) {
-            this[typesU[i]] = noop;
-        }
-        this.identifier = '';
-    }
-
-    debug(msg) {
-        this._debugP(msg);
-        this._debugU(msg);
-    }
-
-    info(msg) {
-        this._infoP(msg);
-        this._infoU(msg);
-    }
-
-    warn(msg) {
-        this._warnP(msg);
-        this._warnU(msg);
-    }
-
-    error(msg) {
-        this._errorP(msg);
-        this._errorU(msg);
-    }
-
-    _debugP(msg) {
-        console.log(msg);
-    }
-
-    _infoP(msg) {
-        console.info(msg);
-    }
-
-    _warnP(msg) {
-        console.warn(msg);
-    }
-
-    _errorP(msg) {
-        console.error(msg);
-    }
-
-    _debugU(msg) {
-        msg = `[${this.identifier} debug] > ${msg}`
-        this._uploadLog(msg);
-    }
-
-    _infoU(msg) {
-        msg = `[${this.identifier} info] > ${msg}`
-        this._uploadLog(msg);
-    }
-
-    _warnU(msg) {
-        msg = `[${this.identifier} warn] > ${msg}`
-        this._uploadLog(msg);
-    }
-
-    _errorU(msg) {
-        msg = `[${this.identifier} error] > ${msg}`
-        this._uploadLog(msg);
-    }
-
-    _uploadLog(msg) {
-        if (!this.connected) return;
-        this._ws.send(msg);
-    }
-
-    _initWs(channel) {
-        const wsOptions = {
-            maxRetries: this.config.wsMaxRetries,
-            minReconnectionDelay: this.config.wsReconnectInterval*1000
-        };
-        let ws = new (reconnecting_websocket__WEBPACK_IMPORTED_MODULE_0___default())(this.config.logUploadAddr+`?info_hash=${window.encodeURIComponent(channel)}`, undefined, wsOptions);
-        ws.onopen = () => {
-            this.debug('Log websocket connection opened');
-            this.connected = true;
-        };
-        // ws.onmessage = (e) => {
-        //
-        //
-        // };
-        
-        //websocket断开时清除datachannel
-        ws.onclose = () => {                                            
-            this.warn(`Log websocket closed`);
-            this.connected = false;
-        };
-        return ws;
-    }
-}
-
-function noop() {
-
-}
-
-/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (Logger);
-
 /***/ })
 
 /******/ 	});
@@ -29306,68 +29277,55 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _p2p_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./p2p.js */ "./src/p2p.js");
 // 文档地址
 // https://hls-js.netlify.app/api-docs
-
-
-
 // import wwws from './ws.js';
 // import {sum,square} from './utils.js';
 // console.log(sum(1,2));
 console.log("start...");
 
 
-
-
-
-
 let recommendedHlsjsConfig = {
-    maxBufferSize: 0,
-    maxBufferLength: 30,
-    liveSyncDuration: 30,
-    fragLoadingTimeOut: 4000,              // used by fragment-loader
+  maxBufferSize: 0,
+  maxBufferLength: 30,
+  liveSyncDuration: 30,
+  fragLoadingTimeOut: 4000 // used by fragment-loader
+
 };
 
 class P2PHlsjs extends (hls_js__WEBPACK_IMPORTED_MODULE_0___default()) {
+  static get P2PEvents() {
+    console.log("p2p:", P2PEngine.Events);
+    return P2PEngine.Events;
+  }
 
-    static get P2PEvents() {
-    	console.log("p2p:",P2PEngine.Events);
-        return P2PEngine.Events;
+  static get uaParserResult() {
+    return P2PEngine.uaParserResult;
+  }
+
+  constructor(config = {}) {
+    console.log("p2p constructor:", config);
+    let p2pConfig = config.p2pConfig || {};
+    delete config.p2pConfig;
+    let mergedHlsjsConfig = Object.assign({}, recommendedHlsjsConfig, config); //test
+
+    mergedHlsjsConfig.debug = false;
+    super(mergedHlsjsConfig);
+
+    if (_p2p_js__WEBPACK_IMPORTED_MODULE_1__["default"].WEBRTC_SUPPORT) {
+      this.engine = new _p2p_js__WEBPACK_IMPORTED_MODULE_1__["default"](this, p2pConfig);
     }
+  }
 
-    static get uaParserResult() {
-        return P2PEngine.uaParserResult;
-    }
+  enableP2P() {
+    this.engine.enableP2P();
+  }
 
-    constructor(config = {}) {
-
-    	console.log("p2p constructor:",config);
-
-        let p2pConfig = config.p2pConfig || {};
-        delete config.p2pConfig;
-
-        let mergedHlsjsConfig = Object.assign({}, recommendedHlsjsConfig, config);
-
-        //test
-        mergedHlsjsConfig.debug = false;
-        super(mergedHlsjsConfig);
-
-        if (_p2p_js__WEBPACK_IMPORTED_MODULE_1__["default"].WEBRTC_SUPPORT) {
-            this.engine = new _p2p_js__WEBPACK_IMPORTED_MODULE_1__["default"](this, p2pConfig);
-        }
-    }
-
-    enableP2P() {
-        this.engine.enableP2P();
-    }
-
-    disableP2P() {
-        this.engine.disableP2P();
-    }
-
+  disableP2P() {
+    this.engine.disableP2P();
+  }
 
 }
 
-P2PHlsjs.engineVersion = _p2p_js__WEBPACK_IMPORTED_MODULE_1__["default"].version;  
-
+P2PHlsjs.engineVersion = _p2p_js__WEBPACK_IMPORTED_MODULE_1__["default"].version;
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (P2PHlsjs);
 })();
 

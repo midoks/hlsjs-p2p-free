@@ -20,7 +20,7 @@ class p2p extends EventEmitter {
         this.hlsjs = hlsjs;
 
          //默认开启P2P
-        this.p2pEnabled = this.config.disableP2P === false ? false : true;                                     
+        this.p2pEnabled = this.config.disableP2P === false ? false : true;             
         hlsjs.config.currLoaded = hlsjs.config.currPlay = 0;
         
         const onLevelLoaded = (event, data) => {
@@ -40,11 +40,6 @@ class p2p extends EventEmitter {
         };
 
         hlsjs.on(hlsjs.constructor.Events.LEVEL_LOADED, onLevelLoaded);
-
-
-        //streaming rate
-        // this.streamingRate = 0;                        //单位bps
-        // this.fragLoadedCounter = 0;
     }
 
      _init(channel) {
