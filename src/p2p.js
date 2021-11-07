@@ -6,6 +6,8 @@ import UAParser from 'ua-parser-js';
 import Logger from './utils/logger';
 import defaultP2PConfig from './config';
 
+import getBrowserRTC from './core/core';
+
 
 const uaParserResult = (new UAParser()).getResult();
 
@@ -21,6 +23,7 @@ class p2p extends EventEmitter {
          //默认开启P2P
         this.p2pEnabled = this.config.disableP2P === false ? false : true;                                     
         hlsjs.config.currLoaded = hlsjs.config.currPlay = 0;
+        
         const onLevelLoaded = (event, data) => {
 
         	console.log('onLevelLoaded',event, data);
@@ -77,7 +80,8 @@ class p2p extends EventEmitter {
 
 
         this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_LOADING, (id, data) => {
-            console.log('FRAG_LOADING: ' + JSON.stringify(data.frag));
+            // console.log('FRAG_LOADING: ' + JSON.stringify(data.frag));
+            console.log('FRAG_LOADING: ',data.frag);
             logger.debug('FRAG_LOADING: ' + data.frag.sn);
             // this.signaler.currentLoadingSN = data.frag.sn;
 
@@ -88,12 +92,14 @@ class p2p extends EventEmitter {
         // this.signalTried = false;                                                   
         this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_LOADED, (id, data) => {
 
-        	console.log(this.hlsjs.constructor.Events.FRAG_LOADED, id);
+        	console.log(this.hlsjs.constructor.Events.FRAG_LOADED, data);
             //let sn = data.frag.sn;
             //this.hlsjs.config.currLoaded = sn;
-            //this.signaler.currentLoadedSN = sn;                                //用于BT算法
+
+            //用于BT算法
+            //this.signaler.currentLoadedSN = sn;                                
             //this.hlsjs.config.currLoadedDuration = data.frag.duration;
-            let bitrate = Math.round(data.frag.loaded*8/data.frag.duration);
+            let bitrate = Math.round(data.frag.stats.loaded*8/data.frag.duration);
             console.log('bitrate:',bitrate);
             //&& !this.signaler.connected
             if (!this.signalTried  && this.config.p2pEnabled) {
@@ -174,6 +180,8 @@ class p2p extends EventEmitter {
     }
 }
 
+
+p2p.WEBRTC_SUPPORT = !!getBrowserRTC();
 p2p.version = "0.0.1";
 export default p2p;
 

@@ -28842,6 +28842,29 @@ let defaultP2PConfig = {
 
 /***/ }),
 
+/***/ "./src/core/core.js":
+/*!**************************!*\
+  !*** ./src/core/core.js ***!
+  \**************************/
+/***/ ((module) => {
+
+
+module.exports = function getBrowserRTC () {
+  if (typeof globalThis === 'undefined') return null
+  var wrtc = {
+    RTCPeerConnection: globalThis.RTCPeerConnection || globalThis.mozRTCPeerConnection ||
+      globalThis.webkitRTCPeerConnection,
+    RTCSessionDescription: globalThis.RTCSessionDescription ||
+      globalThis.mozRTCSessionDescription || globalThis.webkitRTCSessionDescription,
+    RTCIceCandidate: globalThis.RTCIceCandidate || globalThis.mozRTCIceCandidate ||
+      globalThis.webkitRTCIceCandidate
+  }
+  if (!wrtc.RTCPeerConnection) return null
+  return wrtc
+}
+
+/***/ }),
+
 /***/ "./src/p2p.js":
 /*!********************!*\
   !*** ./src/p2p.js ***!
@@ -28859,6 +28882,10 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var ua_parser_js__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(ua_parser_js__WEBPACK_IMPORTED_MODULE_1__);
 /* harmony import */ var _utils_logger__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./utils/logger */ "./src/utils/logger.js");
 /* harmony import */ var _config__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./config */ "./src/config.js");
+/* harmony import */ var _core_core__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./core/core */ "./src/core/core.js");
+/* harmony import */ var _core_core__WEBPACK_IMPORTED_MODULE_4___default = /*#__PURE__*/__webpack_require__.n(_core_core__WEBPACK_IMPORTED_MODULE_4__);
+
+
 
 
 
@@ -28882,6 +28909,7 @@ class p2p extends (events__WEBPACK_IMPORTED_MODULE_0___default()) {
          //默认开启P2P
         this.p2pEnabled = this.config.disableP2P === false ? false : true;                                     
         hlsjs.config.currLoaded = hlsjs.config.currPlay = 0;
+        
         const onLevelLoaded = (event, data) => {
 
         	console.log('onLevelLoaded',event, data);
@@ -28938,7 +28966,8 @@ class p2p extends (events__WEBPACK_IMPORTED_MODULE_0___default()) {
 
 
         this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_LOADING, (id, data) => {
-            console.log('FRAG_LOADING: ' + JSON.stringify(data.frag));
+            // console.log('FRAG_LOADING: ' + JSON.stringify(data.frag));
+            console.log('FRAG_LOADING: ',data.frag);
             logger.debug('FRAG_LOADING: ' + data.frag.sn);
             // this.signaler.currentLoadingSN = data.frag.sn;
 
@@ -28949,12 +28978,14 @@ class p2p extends (events__WEBPACK_IMPORTED_MODULE_0___default()) {
         // this.signalTried = false;                                                   
         this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_LOADED, (id, data) => {
 
-        	console.log(this.hlsjs.constructor.Events.FRAG_LOADED, id);
+        	console.log(this.hlsjs.constructor.Events.FRAG_LOADED, data);
             //let sn = data.frag.sn;
             //this.hlsjs.config.currLoaded = sn;
-            //this.signaler.currentLoadedSN = sn;                                //用于BT算法
+
+            //用于BT算法
+            //this.signaler.currentLoadedSN = sn;                                
             //this.hlsjs.config.currLoadedDuration = data.frag.duration;
-            let bitrate = Math.round(data.frag.loaded*8/data.frag.duration);
+            let bitrate = Math.round(data.frag.stats.loaded*8/data.frag.duration);
             console.log('bitrate:',bitrate);
             //&& !this.signaler.connected
             if (!this.signalTried  && this.config.p2pEnabled) {
@@ -29035,6 +29066,8 @@ class p2p extends (events__WEBPACK_IMPORTED_MODULE_0___default()) {
     }
 }
 
+
+p2p.WEBRTC_SUPPORT = !!_core_core__WEBPACK_IMPORTED_MODULE_4___default()();
 p2p.version = "0.0.1";
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (p2p);
 
@@ -29314,12 +29347,13 @@ class P2PHlsjs extends (hls_js__WEBPACK_IMPORTED_MODULE_0___default()) {
 
         let mergedHlsjsConfig = Object.assign({}, recommendedHlsjsConfig, config);
 
+        //test
+        mergedHlsjsConfig.debug = false;
         super(mergedHlsjsConfig);
 
-        // if (p2p.WEBRTC_SUPPORT) {
+        if (_p2p_js__WEBPACK_IMPORTED_MODULE_1__["default"].WEBRTC_SUPPORT) {
             this.engine = new _p2p_js__WEBPACK_IMPORTED_MODULE_1__["default"](this, p2pConfig);
-        // }
-
+        }
     }
 
     enableP2P() {

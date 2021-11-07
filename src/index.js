@@ -40,12 +40,13 @@ class P2PHlsjs extends Hlsjs {
 
         let mergedHlsjsConfig = Object.assign({}, recommendedHlsjsConfig, config);
 
+        //test
+        mergedHlsjsConfig.debug = false;
         super(mergedHlsjsConfig);
 
-        // if (p2p.WEBRTC_SUPPORT) {
+        if (p2p.WEBRTC_SUPPORT) {
             this.engine = new p2p(this, p2pConfig);
-        // }
-
+        }
     }
 
     enableP2P() {
