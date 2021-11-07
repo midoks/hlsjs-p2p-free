@@ -28842,10 +28842,10 @@ let defaultP2PConfig = {
 
 /***/ }),
 
-/***/ "./src/core/core.js":
-/*!**************************!*\
-  !*** ./src/core/core.js ***!
-  \**************************/
+/***/ "./src/core/index.js":
+/*!***************************!*\
+  !*** ./src/core/index.js ***!
+  \***************************/
 /***/ ((module) => {
 
 
@@ -28882,9 +28882,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var ua_parser_js__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(ua_parser_js__WEBPACK_IMPORTED_MODULE_1__);
 /* harmony import */ var _utils_logger__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./utils/logger */ "./src/utils/logger.js");
 /* harmony import */ var _config__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./config */ "./src/config.js");
-/* harmony import */ var _core_core__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./core/core */ "./src/core/core.js");
-/* harmony import */ var _core_core__WEBPACK_IMPORTED_MODULE_4___default = /*#__PURE__*/__webpack_require__.n(_core_core__WEBPACK_IMPORTED_MODULE_4__);
-
+/* harmony import */ var _core__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./core */ "./src/core/index.js");
+/* harmony import */ var _core__WEBPACK_IMPORTED_MODULE_4___default = /*#__PURE__*/__webpack_require__.n(_core__WEBPACK_IMPORTED_MODULE_4__);
 
 
 
@@ -29067,7 +29066,7 @@ class p2p extends (events__WEBPACK_IMPORTED_MODULE_0___default()) {
 }
 
 
-p2p.WEBRTC_SUPPORT = !!_core_core__WEBPACK_IMPORTED_MODULE_4___default()();
+p2p.WEBRTC_SUPPORT = !!_core__WEBPACK_IMPORTED_MODULE_4___default()();
 p2p.version = "0.0.1";
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (p2p);
 
