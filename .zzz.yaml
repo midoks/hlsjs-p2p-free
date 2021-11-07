@@ -5,7 +5,7 @@ dirfilter:
 - .git
 - dist
 ext:
-- go
+- ts
 - js
 enablerun: false
 action:
