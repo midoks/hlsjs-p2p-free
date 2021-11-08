@@ -19,7 +19,8 @@
     "babel-loader": "^8.2.3",
     "hls.js": "^1.0.12",
     "reconnecting-websocket": "^3.2.2",
-    "ua-parser-js": "^0.7.17"
+    "ua-parser-js": "^0.7.17",
+     "simple-peer": "^9.0.0"
   },
   "keywords": [
     "html5",

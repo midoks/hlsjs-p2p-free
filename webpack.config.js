@@ -77,6 +77,23 @@ const commonConfig = {
     }
 };
 
+const vv = {
+    name: 'release',
+    mode: 'production',
+    entry: './src/index.js',
+    output: {
+        filename: 'p2p.min.js',
+        chunkFilename: '[name].js',
+        path: path.resolve(__dirname, 'dist'),
+        publicPath: '/dist/',
+        library: ['Hls'],
+        libraryTarget: 'umd',
+        libraryExport: 'default',
+        globalObject: 'this',
+    },
+    plugins: getPluginsForConfig(true)
+}
+
 const multiConfig = [
   {
     name: 'debug',
@@ -94,23 +111,7 @@ const multiConfig = [
       globalObject: 'this',
     },
     devtool: 'source-map',
-  },
-  {
-    name: 'release',
-  	mode: 'production',
-    entry: './src/index.js',
-    output: {
-        filename: 'p2p.min.js',
-    	chunkFilename: '[name].js',
-        path: path.resolve(__dirname, 'dist'),
-        publicPath: '/dist/',
-        library: ['Hls'],
-        libraryTarget: 'umd',
-        libraryExport: 'default',
-        globalObject: 'this',
-    },
-    plugins: getPluginsForConfig(true)
-	},
+  }
 ].map(fragment => Object.assign({}, commonConfig, fragment));
 
 

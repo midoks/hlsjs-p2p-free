@@ -1,5 +1,9 @@
+import Fetcher from './fetcher';
 
-module.exports = function getBrowserRTC () {
+
+
+
+function getBrowserRTC () {
   if (typeof globalThis === 'undefined') return null
   var wrtc = {
     RTCPeerConnection: globalThis.RTCPeerConnection || globalThis.mozRTCPeerConnection ||
@@ -12,3 +16,7 @@ module.exports = function getBrowserRTC () {
   if (!wrtc.RTCPeerConnection) return null
   return wrtc
 }
+
+
+export { Fetcher,getBrowserRTC }
+

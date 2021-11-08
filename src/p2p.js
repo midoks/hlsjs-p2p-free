@@ -5,7 +5,7 @@ import UAParser from 'ua-parser-js';
 
 import Logger from './utils/logger';
 import defaultP2PConfig from './config';
-import getBrowserRTC from './core';
+import {Fetcher,getBrowserRTC} from './core';
 
 
 const uaParserResult = (new UAParser()).getResult();
@@ -58,10 +58,9 @@ class p2p extends EventEmitter {
         // this.bufMgr = new BufferManager(this, this.config);
         // this.hlsjs.config.bufMgr = this.bufMgr;
 
-
         //实例化Fetcher
-        // let fetcher = new Fetcher(this, this.config.key, window.encodeURIComponent(channel), this.config.announce, browserInfo);
-        // this.fetcher = fetcher;
+        let fetcher = new Fetcher(this, this.config.key, window.encodeURIComponent(channel), this.config.announce, browserInfo);
+        this.fetcher = fetcher;
         // //实例化tracker服务器
         // this.signaler = new Tracker(this, fetcher, this.config);
         // this.signaler.scheduler.bufferManager = this.bufMgr;
@@ -148,7 +147,8 @@ class p2p extends EventEmitter {
 
 
     //停止p2p
-    disableP2P() {                                              
+    disableP2P() {    
+        console.log("disableP2P!!!!")
         // const { logger } = this;
         // logger.warn(`disableP2P`);
         // if (this.p2pEnabled) {
@@ -161,7 +161,8 @@ class p2p extends EventEmitter {
     }
 
     //在停止的情况下重新启动P2P
-    enableP2P() {                                               
+    enableP2P() {       
+        console.log("enableP2P!!!!")
         // const { logger } = this;
         // logger.warn(`enableP2P`);
         // if (!this.p2pEnabled) {

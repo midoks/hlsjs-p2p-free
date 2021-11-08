@@ -26,8 +26,9 @@ __webpack_require__.r(__webpack_exports__);
 let defaultP2PConfig = {
   key: 'free',
   //连接tracker服务器的API key
-  wsSignalerAddr: 'ws://127.0.0.1/ws',
+  wsSignalerAddr: 'ws://127.0.0.1:3030/ws',
   //信令服务器地址
+  // wsSignalerAddr: 'ws://127.0.0.1:8099',        //信令服务器地址
   wsMaxRetries: 3,
   //发送数据重试次数
   wsReconnectInterval: 5,
@@ -61,13 +62,63 @@ let defaultP2PConfig = {
 
 /***/ }),
 
+/***/ "./src/core/fetcher.js":
+/*!*****************************!*\
+  !*** ./src/core/fetcher.js ***!
+  \*****************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var events__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! events */ "./node_modules/events/events.js");
+/* harmony import */ var events__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(events__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var reconnecting_websocket__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! reconnecting-websocket */ "./node_modules/reconnecting-websocket/dist/index.js");
+/* harmony import */ var reconnecting_websocket__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(reconnecting_websocket__WEBPACK_IMPORTED_MODULE_1__);
+
+
+
+class Fetcher extends (events__WEBPACK_IMPORTED_MODULE_0___default()) {
+  constructor(p2p, key, channel, announce, browserInfo) {
+    super();
+    this.p2p = p2p;
+    this.key = key;
+    this.channel = channel;
+    this.announce = announce;
+    this.browserInfo = browserInfo; // console.log("Fetcher3",p2p, key, channel, announce, browserInfo);
+
+    console.log('Fetcher3', p2p.config.wsSignalerAddr); // const ReconnectingWebSocket = require('reconnecting-websocket');
+
+    const rws = new (reconnecting_websocket__WEBPACK_IMPORTED_MODULE_1___default())(p2p.config.wsSignalerAddr);
+    rws.addEventListener('open', () => {
+      rws.send('hello!');
+    });
+  }
+
+}
+
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (Fetcher);
+
+/***/ }),
+
 /***/ "./src/core/index.js":
 /*!***************************!*\
   !*** ./src/core/index.js ***!
   \***************************/
-/***/ ((module) => {
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
-module.exports = function getBrowserRTC() {
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "Fetcher": () => (/* reexport safe */ _fetcher__WEBPACK_IMPORTED_MODULE_0__["default"]),
+/* harmony export */   "getBrowserRTC": () => (/* binding */ getBrowserRTC)
+/* harmony export */ });
+/* harmony import */ var _fetcher__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./fetcher */ "./src/core/fetcher.js");
+
+
+function getBrowserRTC() {
   if (typeof globalThis === 'undefined') return null;
   var wrtc = {
     RTCPeerConnection: globalThis.RTCPeerConnection || globalThis.mozRTCPeerConnection || globalThis.webkitRTCPeerConnection,
@@ -76,7 +127,9 @@ module.exports = function getBrowserRTC() {
   };
   if (!wrtc.RTCPeerConnection) return null;
   return wrtc;
-};
+}
+
+
 
 /***/ }),
 
@@ -98,7 +151,6 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _utils_logger__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./utils/logger */ "./src/utils/logger.js");
 /* harmony import */ var _config__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./config */ "./src/config.js");
 /* harmony import */ var _core__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./core */ "./src/core/index.js");
-/* harmony import */ var _core__WEBPACK_IMPORTED_MODULE_4___default = /*#__PURE__*/__webpack_require__.n(_core__WEBPACK_IMPORTED_MODULE_4__);
 
 
 
@@ -147,9 +199,9 @@ class p2p extends (events__WEBPACK_IMPORTED_MODULE_0___default()) {
     // this.bufMgr = new BufferManager(this, this.config);
     // this.hlsjs.config.bufMgr = this.bufMgr;
     //实例化Fetcher
-    // let fetcher = new Fetcher(this, this.config.key, window.encodeURIComponent(channel), this.config.announce, browserInfo);
-    // this.fetcher = fetcher;
-    // //实例化tracker服务器
+
+    let fetcher = new _core__WEBPACK_IMPORTED_MODULE_4__.Fetcher(this, this.config.key, window.encodeURIComponent(channel), this.config.announce, browserInfo);
+    this.fetcher = fetcher; // //实例化tracker服务器
     // this.signaler = new Tracker(this, fetcher, this.config);
     // this.signaler.scheduler.bufferManager = this.bufMgr;
     // //替换fLoader
@@ -218,7 +270,8 @@ class p2p extends (events__WEBPACK_IMPORTED_MODULE_0___default()) {
   } //停止p2p
 
 
-  disableP2P() {// const { logger } = this;
+  disableP2P() {
+    console.log("disableP2P!!!!"); // const { logger } = this;
     // logger.warn(`disableP2P`);
     // if (this.p2pEnabled) {
     //     this.p2pEnabled = false;
@@ -230,7 +283,8 @@ class p2p extends (events__WEBPACK_IMPORTED_MODULE_0___default()) {
   } //在停止的情况下重新启动P2P
 
 
-  enableP2P() {// const { logger } = this;
+  enableP2P() {
+    console.log("enableP2P!!!!"); // const { logger } = this;
     // logger.warn(`enableP2P`);
     // if (!this.p2pEnabled) {
     //     this.p2pEnabled = true;
@@ -243,7 +297,7 @@ class p2p extends (events__WEBPACK_IMPORTED_MODULE_0___default()) {
 
 }
 
-p2p.WEBRTC_SUPPORT = !!_core__WEBPACK_IMPORTED_MODULE_4___default()();
+p2p.WEBRTC_SUPPORT = !!(0,_core__WEBPACK_IMPORTED_MODULE_4__.getBrowserRTC)();
 p2p.version = "0.0.1";
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (p2p);
 
