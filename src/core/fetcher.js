@@ -5,7 +5,7 @@ import { Base64 } from 'js-base64';
 import Peer from 'simple-peer';
 
 import Ajax from './ajax';
-
+import { getBrowserRTC } from './index';
 
 
 function urlBase64(url){
@@ -45,12 +45,22 @@ class Fetcher extends EventEmitter {
 			var peer = data.data['id'];
 
 
-			const peer2peer = new Peer({ initiator: true });
+			var peer = new Peer({ 
+				initiator: true,
+				sdpTransform: function (sdp) {
+					console.log(sdp);
+					return sdp;
+				}, 
+			});
 
-			console.log("peer2peer:",peer2peer);
 
-
-
+			console.log('Fetcher3',p2p.config.wsSignalerAddr);
+			// var wsUrl = p2p.config.wsSignalerAddr + "?id=" + peer
+			// const rws = new ReconnectingWebSocket(wsUrl);
+			// rws.addEventListener('open', () => {
+			// 	console.log("websocket init");
+			//     rws.send('{"action":"get_stat"}');
+			// });
 
 			//开始心跳
 			var url = announce+"/channel/"+urlChannel+"/node/"+peer+"/stats"
@@ -58,12 +68,7 @@ class Fetcher extends EventEmitter {
 		});
 
 
-		// console.log('Fetcher3',p2p.config.wsSignalerAddr);
-		// const ReconnectingWebSocket = require('reconnecting-websocket');
-		// const rws = new ReconnectingWebSocket(p2p.config.wsSignalerAddr);
-		// rws.addEventListener('open', () => {
-		//     rws.send('{"action":"get_stat"}');
-		// });
+		
 	}
 
 	static channelStats(heartbeat,url){

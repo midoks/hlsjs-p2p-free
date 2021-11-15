@@ -31,8 +31,11 @@ $('#debug').on('load', function(){
                         debug: false,
                         // Other hlsjsConfig options provided by hls.js
                         p2pConfig: {
-                            announce: "http://127.0.0.1:3030",
-                            wsSignalerAddr: 'ws://127.0.0.1:3030/ws',
+                            // announce: "http://127.0.0.1:3030",
+                            // wsSignalerAddr: 'ws://127.0.0.1:3030/ws',
+
+                            announce: "https://gop2p.cachecha.com",
+                            wsSignalerAddr: 'wss://gop2p.cachecha.com/ws',
 
                             live: true,        
                             // Other p2pConfig options provided by CDNBye http://www.cdnbye.com/en/
