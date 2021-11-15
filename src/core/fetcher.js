@@ -2,7 +2,7 @@
 import EventEmitter from 'events';
 import ReconnectingWebSocket from 'reconnecting-websocket';
 import { Base64 } from 'js-base64';
-import Peer from 'peerjs';
+import Peer from 'simple-peer';
 
 import Ajax from './ajax';
 
@@ -45,9 +45,9 @@ class Fetcher extends EventEmitter {
 			var peer = data.data['id'];
 
 
-			const peer = Peer();
+			const peer2peer = new Peer({ initiator: true });
 
-			console.log("peer:",peer);
+			console.log("peer2peer:",peer2peer);
 
 
 
