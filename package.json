@@ -12,15 +12,16 @@
   "license": "ISC",
   "devDependencies": {
     "dplayer": "^1.24.0",
-    "webpack": "^5.61.0",
+    "webpack": "^5.64.0",
     "webpack-cli": "^4.9.1"
   },
   "dependencies": {
     "babel-loader": "^8.2.3",
     "hls.js": "^1.0.12",
+    "js-base64": "^3.7.2",
     "reconnecting-websocket": "^3.2.2",
-    "ua-parser-js": "^0.7.17",
-     "simple-peer": "^9.0.0"
+    "simple-peer": "^9.0.0",
+    "ua-parser-js": "^0.7.17"
   },
   "keywords": [
     "html5",

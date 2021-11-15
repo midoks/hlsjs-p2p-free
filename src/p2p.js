@@ -62,7 +62,7 @@ class p2p extends EventEmitter {
         let fetcher = new Fetcher(this, this.config.key, window.encodeURIComponent(channel), this.config.announce, browserInfo);
         this.fetcher = fetcher;
         // //实例化tracker服务器
-        // this.signaler = new Tracker(this, fetcher, this.config);
+        this.signaler = new Tracker(this, fetcher, this.config);
         // this.signaler.scheduler.bufferManager = this.bufMgr;
         // //替换fLoader
         // this.hlsjs.config.fLoader = FragLoader;
@@ -111,13 +111,13 @@ class p2p extends EventEmitter {
             // }
         });
 
-        this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_CHANGED, (id, data) => {
-            // log('FRAG_CHANGED: '+JSON.stringify(data.frag, null, 2));
-            console.log('FRAG_CHANGED: '+data.frag.sn);
-            const sn = data.frag.sn;
-            this.hlsjs.config.currPlay = sn;
-            // this.signaler.currentPlaySN = sn;
-        });
+        // this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_CHANGED, (id, data) => {
+        //     // log('FRAG_CHANGED: '+JSON.stringify(data.frag, null, 2));
+        //     console.log('FRAG_CHANGED: '+data.frag.sn);
+        //     const sn = data.frag.sn;
+        //     this.hlsjs.config.currPlay = sn;
+        //     // this.signaler.currentPlaySN = sn;
+        // });
 
         // this.hlsjs.on(this.hlsjs.constructor.Events.ERROR, (event, data) => {
         //     logger.error(`errorType ${data.type} details ${data.details} errorFatal ${data.fatal}`);

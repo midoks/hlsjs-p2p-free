@@ -1,13 +1,7 @@
 // 文档地址
 // https://hls-js.netlify.app/api-docs
 
-
-
-// import wwws from './ws.js';
-// import {sum,square} from './utils.js';
-// console.log(sum(1,2));
 console.log("start...");
-
 
 
 import Hlsjs from 'hls.js';

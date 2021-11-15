@@ -3,8 +3,8 @@
 let defaultP2PConfig = {
     key: 'free',                                //连接tracker服务器的API key
 
-    wsSignalerAddr: 'ws://127.0.0.1:3030/ws',        //信令服务器地址
-    // wsSignalerAddr: 'ws://127.0.0.1:8099',        //信令服务器地址
+    wsSignalerAddr: 'wss://gop2p.cachecha.com/ws', //信令服务器地址
+    announce:'https://gop2p.cachecha.com',         
     wsMaxRetries: 3,                            //发送数据重试次数
     wsReconnectInterval: 5,                     //websocket重连时间间隔
 

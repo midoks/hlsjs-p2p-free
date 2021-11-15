@@ -12,13 +12,12 @@
 	<!-- <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script> -->
 </head>
 <body>
-<script id="dsss"></script>
+<script id="debug"></script>
 <div id="dplayer" style="width:500px;height:300px;"></div>
 
 <script type="text/javascript">
-$('#dsss').attr('src','./dist/p2p.js?v='+(new Date()).getTime());
-
-$('#dsss').on('load', function(){
+$('#debug').attr('src','./dist/p2p.js?v='+(new Date()).getTime());
+$('#debug').on('load', function(){
 
     const dp = new DPlayer({
         container: document.getElementById('dplayer'),
@@ -29,9 +28,12 @@ $('#dsss').on('load', function(){
             customType: {
                 'customHls': function (video, player) {
                     const hls = new Hls({
-                        debug: true,
+                        debug: false,
                         // Other hlsjsConfig options provided by hls.js
                         p2pConfig: {
+                            announce: "http://127.0.0.1:3030",
+                            wsSignalerAddr: 'ws://127.0.0.1:3030/ws',
+
                             live: true,        
                             // Other p2pConfig options provided by CDNBye http://www.cdnbye.com/en/
                         }
