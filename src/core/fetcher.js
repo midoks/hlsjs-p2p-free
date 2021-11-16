@@ -2,9 +2,8 @@
 import EventEmitter from 'events';
 import ReconnectingWebSocket from 'reconnecting-websocket';
 import { Base64 } from 'js-base64';
-import Peer from 'simple-peer';
+import SimplePeer from 'simple-peer';
 
-import Ajax from './ajax';
 import { getBrowserRTC } from './index';
 
 
@@ -18,43 +17,49 @@ function urlBase64(url){
 
 
 class Fetcher extends EventEmitter {
-	constructor(p2p, key, channel, announce, browserInfo) {
+	constructor(engine, key, channel, announce, browserInfo) {
 		super();
 
-		this.p2p = p2p;
+		this.engine = engine;
 		this.key = key;
 		this.channel = channel;
 		this.announce = announce;
 		this.browserInfo = browserInfo;
 
 
-		console.log("channel:", p2p);
+		console.log("channel:", engine);
 		console.log("browserInfo:",browserInfo);
 		console.log("announce:",announce);
 
-		var urlChannel = urlBase64(p2p.hlsjs.url)
-		var postJson = {
-			"channel": urlChannel,
-		}
-
-		var channelPostUrl = announce + '/channel'
-		Ajax("JSON",true).post(channelPostUrl ,JSON.stringify(postJson), function(data){
-			console.log("channel[data]:",data);
-
-			var report_interval = data.data['report_interval']*1000;
-			var peer = data.data['id'];
 
 
-			var peer = new Peer({ 
-				initiator: true,
-				sdpTransform: function (sdp) {
-					console.log(sdp);
-					return sdp;
-				}, 
+
+
+			var simPeer = new SimplePeer({ 
+				initiator: false,
+				// sdpTransform: function (sdp) {
+				// 	console.log(sdp);
+				// 	return sdp;
+				// }, 
 			});
 
+			// peer.once('_iceComplete', function() {
+			// 	console.log('_iceComplete');
+			// });
 
-			console.log('Fetcher3',p2p.config.wsSignalerAddr);
+			simPeer.on('signal', data=>{
+				console.log('signal',data);
+			});
+
+			simPeer.on('stream', stream => {
+			    console.log("stream:",stream)
+			})
+
+			// simPeer.on('data', data => {
+			//   console.log('got a chunk', data);
+			// })
+
+			console.log('Fetcher3',engine.config.wsSignalerAddr);
 			// var wsUrl = p2p.config.wsSignalerAddr + "?id=" + peer
 			// const rws = new ReconnectingWebSocket(wsUrl);
 			// rws.addEventListener('open', () => {
@@ -62,14 +67,30 @@ class Fetcher extends EventEmitter {
 			//     rws.send('{"action":"get_stat"}');
 			// });
 
-			//开始心跳
-			var url = announce+"/channel/"+urlChannel+"/node/"+peer+"/stats"
-			Fetcher.channelStats(report_interval, url);
-		});
-
-
-		
 	}
+
+	btAnnounce(){
+		var announceURL = this.announce + '/channel';
+		var urlChannel = urlBase64(this.engine.hlsjs.url)
+		var postJson = {
+			"channel": urlChannel,
+		}
+		var _this = this, logger = this.engine.logger;
+		return new Promise(function(resolve, reject) {
+			fetch(announceURL, {
+				method: "POST",
+				body: JSON.stringify(postJson)
+			}).then(function(e) {
+				return e.json()
+			}).then(function(t) {
+				this.peerId = t.peer_id;
+				resolve(t);
+			}).catch(function(e) {
+				logger.error("[fetcher] btAnnounce error " + e);
+				reject(e);
+			})
+		})
+	} 
 
 	static channelStats(heartbeat,url){
 		setTimeout(function(){

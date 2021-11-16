@@ -6,6 +6,7 @@ import UAParser from 'ua-parser-js';
 import Logger from './utils/logger';
 import defaultP2PConfig from './config';
 import {Fetcher,getBrowserRTC} from './core';
+import Tracker from './bt';
 
 
 const uaParserResult = (new UAParser()).getResult();
@@ -52,7 +53,6 @@ class p2p extends EventEmitter {
             os: uaParserResult.os.name
         };
 
-
         this.hlsjs.config.p2pEnabled = this.p2pEnabled;
         //实例化BufferManager
         // this.bufMgr = new BufferManager(this, this.config);
@@ -60,9 +60,10 @@ class p2p extends EventEmitter {
 
         //实例化Fetcher
         let fetcher = new Fetcher(this, this.config.key, window.encodeURIComponent(channel), this.config.announce, browserInfo);
-        this.fetcher = fetcher;
-        // //实例化tracker服务器
+        this.fetcher = fetcher;    
+        //实例化tracker服务器
         this.signaler = new Tracker(this, fetcher, this.config);
+             
         // this.signaler.scheduler.bufferManager = this.bufMgr;
         // //替换fLoader
         // this.hlsjs.config.fLoader = FragLoader;
@@ -82,7 +83,7 @@ class p2p extends EventEmitter {
 
 
         //防止重复连接ws
-        // this.signalTried = false;                                                   
+        this.signalTried = false;                               
         this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_LOADED, (id, data) => {
 
         	console.log(this.hlsjs.constructor.Events.FRAG_LOADED, data);
@@ -92,16 +93,16 @@ class p2p extends EventEmitter {
             //用于BT算法
             //this.signaler.currentLoadedSN = sn;                                
             //this.hlsjs.config.currLoadedDuration = data.frag.duration;
-            let bitrate = Math.round(data.frag.stats.loaded*8/data.frag.duration);
-            console.log('bitrate:',bitrate);
+            // let bitrate = Math.round(data.frag.stats.loaded*8/data.frag.duration);
+            // console.log('bitrate:',bitrate);
             //&& !this.signaler.connected
             if (!this.signalTried  && this.config.p2pEnabled) {
 
                 // this.signaler.scheduler.bitrate = bitrate;
                 // logger.info(`FRAG_LOADED bitrate ${bitrate}`);
 
-                // this.signaler.resumeP2P();
-                // this.signalTried = true;
+                this.signaler.resumeP2P();
+                this.signalTried = true;
             }
             // this.streamingRate = (this.streamingRate*this.fragLoadedCounter + bitrate)/(++this.fragLoadedCounter);
             // this.signaler.scheduler.streamingRate = Math.floor(this.streamingRate);
@@ -137,12 +138,11 @@ class p2p extends EventEmitter {
         //     }
         // });
 
-        // this.hlsjs.on(this.hlsjs.constructor.Events.DESTROYING, () => {
-        //     // log('DESTROYING: '+JSON.stringify(frag));
-        //     this.signaler.destroy();
-        //     this.signaler = null;
-
-        // });
+        this.hlsjs.on(this.hlsjs.constructor.Events.DESTROYING, () => {
+            // log('DESTROYING: '+JSON.stringify(frag));
+            this.signaler.destroy();
+            this.signaler = null;
+        });
     }
 
 
