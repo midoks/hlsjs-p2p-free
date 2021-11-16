@@ -15,16 +15,23 @@ return /******/ (() => { // webpackBootstrap
 /*!*************************!*\
   !*** ./src/bt/index.js ***!
   \*************************/
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+/***/ ((module, exports, __webpack_require__) => {
 
 "use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
-/* harmony export */ });
-/* harmony import */ var _tracker__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./tracker */ "./src/bt/tracker.js");
 
-/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (_tracker__WEBPACK_IMPORTED_MODULE_0__["default"]);
+
+Object.defineProperty(exports, "__esModule", ({
+  value: true
+}));
+
+var _tracker = __webpack_require__(/*! ./tracker */ "./src/bt/tracker.js");
+
+var _tracker2 = _interopRequireDefault(_tracker);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+exports["default"] = _tracker2.default;
+module.exports = exports['default'];
 
 /***/ }),
 
@@ -32,139 +39,152 @@ __webpack_require__.r(__webpack_exports__);
 /*!***************************!*\
   !*** ./src/bt/tracker.js ***!
   \***************************/
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+/***/ ((module, exports, __webpack_require__) => {
 
 "use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
-/* harmony export */ });
-/* harmony import */ var events__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! events */ "./node_modules/events/events.js");
-/* harmony import */ var events__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(events__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var _core__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../core */ "./src/core/index.js");
 
 
+Object.defineProperty(exports, "__esModule", ({
+    value: true
+}));
 
-class Tracker extends (events__WEBPACK_IMPORTED_MODULE_0___default()) {
-  constructor(engine, fetcher, config) {
-    super();
-    this.engine = engine;
-    this.config = config;
-    this.connected = false; // this.scheduler = new BTScheduler(engine, config);
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-    this.DCMap = new Map(); //{key: remotePeerId, value: DataChannnel} 目前已经建立连接或正在建立连接的dc
+var _events = __webpack_require__(/*! events */ "./node_modules/events/events.js");
 
-    this.failedDCSet = new Set(); //{remotePeerId} 建立连接失败的dc
+var _events2 = _interopRequireDefault(_events);
 
-    this.signalerWs = null; //信令服务器ws
+var _core = __webpack_require__(/*! ../core */ "./src/core/index.js");
 
-    this.heartbeatInterval = 30; //tracker request API
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-    this.fetcher = fetcher;
-    /*
-    peers: Array<Object{id:string}>
-     */
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-    this.peers = [];
-  }
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
 
-  _tryConnectToPeer() {
-    const {
-      logger
-    } = this.engine;
-    if (this.peers.length === 0) return;
-    let remotePeerId = this.peers.pop().id;
-    logger.info(`tryConnectToPeer ${remotePeerId}`); // let datachannel = new DataChannel(this.engine, this.peerId, remotePeerId, true, this.config);
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-    this.DCMap.set(remotePeerId, datachannel); //将对等端Id作为键
-    // this._setupDC(datachannel);
-  }
+var Tracker = function (_EventEmitter) {
+    _inherits(Tracker, _EventEmitter);
 
-  _initSignalerWs() {
-    const {
-      logger
-    } = this.engine;
-    let websocket = new _core__WEBPACK_IMPORTED_MODULE_1__.SignalWs(this.engine, this.peerId, this.config);
+    function Tracker(engine, fetcher, config) {
+        _classCallCheck(this, Tracker);
 
-    websocket.onopen = () => {
-      this.connected = true; // this._tryConnectToPeer();
-    };
+        var _this = _possibleConstructorReturn(this, (Tracker.__proto__ || Object.getPrototypeOf(Tracker)).call(this));
 
-    websocket.onmessage = e => {
-      let msg = JSON.parse(e.data);
-      let action = msg.action;
-
-      switch (action) {
-        case 'signal':
-          if (this.failedDCSet.has(msg.from_peer_id)) return;
-          logger.debug(`start handle signal of ${msg.from_peer_id}`);
-          window.clearTimeout(this.signalTimer); //接收到信令后清除定时器
-
-          this.signalTimer = null;
-
-          if (!msg.data) {
-            //如果对等端已不在线
-            this.DCMap.delete(msg.from_peer_id);
-            this.failedDCSet.add(msg.from_peer_id); //记录失败的连接
-
-            logger.info(`signaling ${msg.from_peer_id} not found`);
-
-            this._tryConnectToPeer();
-          } else {
-            this._handleSignal(msg.from_peer_id, msg.data);
-          }
-
-          break;
-
-        case 'reject':
-          this.stopP2P();
-          break;
-
-        default:
-          logger.warn('Signaler websocket unknown action ' + action);
-      }
-    };
-
-    websocket.onclose = () => {
-      //websocket断开时清除datachannel
-      this.connected = false;
-      this.destroy();
-    };
-
-    return websocket;
-  }
-
-  resumeP2P() {
-    console.log('Tracker resumeP2P');
-    const {
-      logger
-    } = this.engine;
-
-    try {
-      this.fetcher.btAnnounce().then(json => {
-        console.log('Tracker resumeP2P:', json);
-        logger.info(`announceURL response ${JSON.stringify(json)}`);
-        this.peerId = json.peer_id;
-        logger.identifier = this.peerId; // this.fetcher.btHeartbeat(json.heartbeat_interval);
-        // this.fetcher.btStatsStart(json.report_limit);
-
-        this.signalerWs = this._initSignalerWs(); //连上tracker后开始连接信令服务器
-        // this._handlePeers(json.peers);
-        // this.engine.emit('peerId', this.peerId);
-      }).catch(err => {});
-    } catch (e) {
-      console.log(e);
+        _this.engine = engine;
+        _this.config = config;
+        _this.connected = false;
+        // this.scheduler = new BTScheduler(engine, config);
+        _this.DCMap = new Map(); //{key: remotePeerId, value: DataChannnel} 目前已经建立连接或正在建立连接的dc
+        _this.failedDCSet = new Set(); //{remotePeerId} 建立连接失败的dc
+        _this.signalerWs = null; //信令服务器ws
+        _this.heartbeatInterval = 30;
+        //tracker request API
+        _this.fetcher = fetcher;
+        /*
+        peers: Array<Object{id:string}>
+         */
+        _this.peers = [];
+        return _this;
     }
-  }
 
-  destroy() {
-    window.clearInterval(this.heartbeater);
-    this.heartbeater = null;
-  }
+    _createClass(Tracker, [{
+        key: '_tryConnectToPeer',
+        value: function _tryConnectToPeer() {
+            var logger = this.engine.logger;
 
-}
+            if (this.peers.length === 0) return;
+            var remotePeerId = this.peers.pop().id;
+            logger.info('tryConnectToPeer ' + remotePeerId);
+            // let datachannel = new DataChannel(this.engine, this.peerId, remotePeerId, true, this.config);
+            this.DCMap.set(remotePeerId, datachannel); //将对等端Id作为键
+            // this._setupDC(datachannel);
+        }
+    }, {
+        key: '_initSignalerWs',
+        value: function _initSignalerWs() {
+            var _this2 = this;
 
-/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (Tracker);
+            var logger = this.engine.logger;
+
+            var websocket = new _core.SignalWs(this.engine, this.peerId, this.config);
+            websocket.onopen = function () {
+                _this2.connected = true;
+                // this._tryConnectToPeer();
+            };
+
+            websocket.onmessage = function (e) {
+                var msg = JSON.parse(e.data);
+                var action = msg.action;
+                switch (action) {
+                    case 'signal':
+                        if (_this2.failedDCSet.has(msg.from_peer_id)) return;
+                        logger.debug('start handle signal of ' + msg.from_peer_id);
+                        window.clearTimeout(_this2.signalTimer); //接收到信令后清除定时器
+                        _this2.signalTimer = null;
+                        if (!msg.data) {
+                            //如果对等端已不在线
+                            _this2.DCMap.delete(msg.from_peer_id);
+                            _this2.failedDCSet.add(msg.from_peer_id); //记录失败的连接
+                            logger.info('signaling ' + msg.from_peer_id + ' not found');
+                            _this2._tryConnectToPeer();
+                        } else {
+                            _this2._handleSignal(msg.from_peer_id, msg.data);
+                        }
+                        break;
+                    case 'reject':
+                        _this2.stopP2P();
+                        break;
+                    default:
+                        logger.warn('Signaler websocket unknown action ' + action);
+
+                }
+            };
+            websocket.onclose = function () {
+                //websocket断开时清除datachannel
+                _this2.connected = false;
+                _this2.destroy();
+            };
+            return websocket;
+        }
+    }, {
+        key: 'resumeP2P',
+        value: function resumeP2P() {
+            var _this3 = this;
+
+            console.log('Tracker resumeP2P');
+            var logger = this.engine.logger;
+
+            try {
+                this.fetcher.btAnnounce().then(function (json) {
+                    console.log('Tracker resumeP2P:', json);
+                    logger.info('announceURL response ' + JSON.stringify(json));
+                    _this3.peerId = json.peer_id;
+                    logger.identifier = _this3.peerId;
+                    // this.fetcher.btHeartbeat(json.heartbeat_interval);
+                    // this.fetcher.btStatsStart(json.report_limit);
+                    _this3.signalerWs = _this3._initSignalerWs(); //连上tracker后开始连接信令服务器
+                    // this._handlePeers(json.peers);
+                    // this.engine.emit('peerId', this.peerId);
+                }).catch(function (err) {});
+            } catch (e) {
+                console.log(e);
+            }
+        }
+    }, {
+        key: 'destroy',
+        value: function destroy() {
+            window.clearInterval(this.heartbeater);
+            this.heartbeater = null;
+        }
+    }]);
+
+    return Tracker;
+}(_events2.default);
+
+exports["default"] = Tracker;
+module.exports = exports['default'];
 
 /***/ }),
 
@@ -172,50 +192,44 @@ class Tracker extends (events__WEBPACK_IMPORTED_MODULE_0___default()) {
 /*!***********************!*\
   !*** ./src/config.js ***!
   \***********************/
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+/***/ ((module, exports) => {
 
 "use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
-/* harmony export */ });
+
+
+Object.defineProperty(exports, "__esModule", ({
+    value: true
+}));
+
 //时间单位统一为秒
-let defaultP2PConfig = {
-  key: 'free',
-  //连接tracker服务器的API key
-  wsSignalerAddr: 'wss://gop2p.cachecha.com/ws',
-  //信令服务器地址
-  announce: 'https://gop2p.cachecha.com',
-  wsMaxRetries: 3,
-  //发送数据重试次数
-  wsReconnectInterval: 5,
-  //websocket重连时间间隔
-  p2pEnabled: true,
-  //是否开启P2P，默认true
-  dcRequestTimeout: 3,
-  //datachannel接收二进制数据的超时时间
-  dcUploadTimeout: 3,
-  //datachannel上传二进制数据的超时时间
-  dcPings: 5,
-  //datachannel发送ping数据包的数量
-  dcTolerance: 4,
-  //请求超时或错误多少次淘汰该peer
-  packetSize: 16 * 1024,
-  //每次通过datachannel发送的包的大小
-  maxBufSize: 1024 * 1024 * 50,
-  //p2p缓存的最大数据量
-  loadTimeout: 5,
-  //p2p下载的超时时间
-  enableLogUpload: false,
-  //上传log到服务器，默认true
-  logUploadAddr: "ws://127.0.0.1/trace",
-  //log上传地址
-  logUploadLevel: 'warn',
-  //log上传level，分为debug、info、warn、error、none，默认warn
-  logLevel: 'none' //log的level，分为debug、info、warn、error、none，默认none
+var defaultP2PConfig = {
+    key: 'free', //连接tracker服务器的API key
+
+    wsSignalerAddr: 'wss://gop2p.cachecha.com/ws', //信令服务器地址
+    announce: 'https://gop2p.cachecha.com',
+    wsMaxRetries: 3, //发送数据重试次数
+    wsReconnectInterval: 5, //websocket重连时间间隔
+
+    p2pEnabled: true, //是否开启P2P，默认true
+
+    dcRequestTimeout: 3, //datachannel接收二进制数据的超时时间
+    dcUploadTimeout: 3, //datachannel上传二进制数据的超时时间
+    dcPings: 5, //datachannel发送ping数据包的数量
+    dcTolerance: 4, //请求超时或错误多少次淘汰该peer
+
+    packetSize: 16 * 1024, //每次通过datachannel发送的包的大小
+    maxBufSize: 1024 * 1024 * 50, //p2p缓存的最大数据量
+    loadTimeout: 5, //p2p下载的超时时间
+
+    enableLogUpload: false, //上传log到服务器，默认true
+    logUploadAddr: "ws://127.0.0.1/trace", //log上传地址
+    logUploadLevel: 'warn', //log上传level，分为debug、info、warn、error、none，默认warn
+    logLevel: 'none' //log的level，分为debug、info、warn、error、none，默认none
 
 };
-/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (defaultP2PConfig);
+
+exports["default"] = defaultP2PConfig;
+module.exports = exports['default'];
 
 /***/ }),
 
@@ -223,114 +237,150 @@ let defaultP2PConfig = {
 /*!*****************************!*\
   !*** ./src/core/fetcher.js ***!
   \*****************************/
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+/***/ ((module, exports, __webpack_require__) => {
 
 "use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
-/* harmony export */ });
-/* harmony import */ var events__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! events */ "./node_modules/events/events.js");
-/* harmony import */ var events__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(events__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var reconnecting_websocket__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! reconnecting-websocket */ "./node_modules/reconnecting-websocket/dist/index.js");
-/* harmony import */ var reconnecting_websocket__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(reconnecting_websocket__WEBPACK_IMPORTED_MODULE_1__);
-/* harmony import */ var js_base64__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! js-base64 */ "./node_modules/js-base64/base64.mjs");
-/* harmony import */ var simple_peer__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! simple-peer */ "./node_modules/simple-peer/index.js");
-/* harmony import */ var simple_peer__WEBPACK_IMPORTED_MODULE_3___default = /*#__PURE__*/__webpack_require__.n(simple_peer__WEBPACK_IMPORTED_MODULE_3__);
-/* harmony import */ var _index__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./index */ "./src/core/index.js");
 
 
+Object.defineProperty(exports, "__esModule", ({
+	value: true
+}));
 
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
+var _events = __webpack_require__(/*! events */ "./node_modules/events/events.js");
 
+var _events2 = _interopRequireDefault(_events);
+
+var _reconnectingWebsocket = __webpack_require__(/*! reconnecting-websocket */ "./node_modules/reconnecting-websocket/dist/index.js");
+
+var _reconnectingWebsocket2 = _interopRequireDefault(_reconnectingWebsocket);
+
+var _jsBase = __webpack_require__(/*! js-base64 */ "./node_modules/js-base64/base64.js");
+
+var _simplePeer = __webpack_require__(/*! simple-peer */ "./node_modules/simple-peer/index.js");
+
+var _simplePeer2 = _interopRequireDefault(_simplePeer);
+
+var _index = __webpack_require__(/*! ./index */ "./src/core/index.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 function urlBase64(url) {
-  var url = url.replace("http://", "");
-  url = url.replace("https://", "");
-  url = url.replace(".m3u8", "");
-  url = js_base64__WEBPACK_IMPORTED_MODULE_2__.Base64.encode(url);
-  return url;
+	var url = url.replace("http://", "");
+	url = url.replace("https://", "");
+	url = url.replace(".m3u8", "");
+	url = _jsBase.Base64.encode(url);
+	return url;
 }
 
-class Fetcher extends (events__WEBPACK_IMPORTED_MODULE_0___default()) {
-  constructor(engine, key, channel, announce, browserInfo) {
-    super();
-    this.engine = engine;
-    this.key = key;
-    this.channel = channel;
-    this.announce = announce;
-    this.browserInfo = browserInfo;
-    console.log("channel:", engine);
-    console.log("browserInfo:", browserInfo);
-    console.log("announce:", announce);
-    var simPeer = new (simple_peer__WEBPACK_IMPORTED_MODULE_3___default())({
-      initiator: false // sdpTransform: function (sdp) {
-      // 	console.log(sdp);
-      // 	return sdp;
-      // }, 
+var Fetcher = function (_EventEmitter) {
+	_inherits(Fetcher, _EventEmitter);
 
-    }); // peer.once('_iceComplete', function() {
-    // 	console.log('_iceComplete');
-    // });
+	function Fetcher(engine, key, channel, announce, browserInfo) {
+		_classCallCheck(this, Fetcher);
 
-    simPeer.on('signal', data => {
-      console.log('signal', data);
-    });
-    simPeer.on('stream', stream => {
-      console.log("stream:", stream);
-    }); // simPeer.on('data', data => {
-    //   console.log('got a chunk', data);
-    // })
+		var _this2 = _possibleConstructorReturn(this, (Fetcher.__proto__ || Object.getPrototypeOf(Fetcher)).call(this));
 
-    console.log('Fetcher3', engine.config.wsSignalerAddr); // var wsUrl = p2p.config.wsSignalerAddr + "?id=" + peer
-    // const rws = new ReconnectingWebSocket(wsUrl);
-    // rws.addEventListener('open', () => {
-    // 	console.log("websocket init");
-    //     rws.send('{"action":"get_stat"}');
-    // });
-  }
+		_this2.engine = engine;
+		_this2.key = key;
+		_this2.channel = channel;
+		_this2.announce = announce;
+		_this2.browserInfo = browserInfo;
 
-  btAnnounce() {
-    var announceURL = this.announce + '/channel';
-    var urlChannel = urlBase64(this.engine.hlsjs.url);
-    var postJson = {
-      "channel": urlChannel
-    };
+		console.log("channel:", engine);
+		console.log("browserInfo:", browserInfo);
+		console.log("announce:", announce);
 
-    var _this = this,
-        logger = this.engine.logger;
+		var simPeer = new _simplePeer2.default({
+			initiator: false
+			// sdpTransform: function (sdp) {
+			// 	console.log(sdp);
+			// 	return sdp;
+			// }, 
+		});
 
-    return new Promise(function (resolve, reject) {
-      fetch(announceURL, {
-        method: "POST",
-        body: JSON.stringify(postJson)
-      }).then(function (e) {
-        return e.json();
-      }).then(function (t) {
-        this.peerId = t.peer_id;
-        resolve(t);
-      }).catch(function (e) {
-        logger.error("[fetcher] btAnnounce error " + e);
-        reject(e);
-      });
-    });
-  }
+		// peer.once('_iceComplete', function() {
+		// 	console.log('_iceComplete');
+		// });
 
-  static channelStats(heartbeat, url) {
-    setTimeout(function () {
-      Ajax("JSON", true).post(url, '{}', function (data) {// console.log("channel[stats]:",data);
-      });
-      Fetcher.channelStats(heartbeat, url);
-    }, heartbeat);
-  }
+		simPeer.on('signal', function (data) {
+			console.log('signal', data);
+		});
 
-  channelPeers() {
-    console.log("channelPeers");
-  }
+		simPeer.on('stream', function (stream) {
+			console.log("stream:", stream);
+		});
 
-}
+		// simPeer.on('data', data => {
+		//   console.log('got a chunk', data);
+		// })
 
-/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (Fetcher);
+		console.log('Fetcher3', engine.config.wsSignalerAddr);
+		// var wsUrl = p2p.config.wsSignalerAddr + "?id=" + peer
+		// const rws = new ReconnectingWebSocket(wsUrl);
+		// rws.addEventListener('open', () => {
+		// 	console.log("websocket init");
+		//     rws.send('{"action":"get_stat"}');
+		// });
+
+		return _this2;
+	}
+
+	_createClass(Fetcher, [{
+		key: 'btAnnounce',
+		value: function btAnnounce() {
+			var announceURL = this.announce + '/channel';
+			var urlChannel = urlBase64(this.engine.hlsjs.url);
+			var postJson = {
+				"channel": urlChannel
+			};
+			var _this = this,
+			    logger = this.engine.logger;
+			return new Promise(function (resolve, reject) {
+				fetch(announceURL, {
+					method: "POST",
+					body: JSON.stringify(postJson)
+				}).then(function (e) {
+					return e.json();
+				}).then(function (t) {
+					this.peerId = t.peer_id;
+					resolve(t);
+				}).catch(function (e) {
+					logger.error("[fetcher] btAnnounce error " + e);
+					reject(e);
+				});
+			});
+		}
+	}, {
+		key: 'channelPeers',
+		value: function channelPeers() {
+			console.log("channelPeers");
+		}
+	}], [{
+		key: 'channelStats',
+		value: function channelStats(heartbeat, url) {
+			setTimeout(function () {
+				Ajax("JSON", true).post(url, '{}', function (data) {
+					// console.log("channel[stats]:",data);
+				});
+
+				Fetcher.channelStats(heartbeat, url);
+			}, heartbeat);
+		}
+	}]);
+
+	return Fetcher;
+}(_events2.default);
+
+exports["default"] = Fetcher;
+module.exports = exports['default'];
 
 /***/ }),
 
@@ -338,19 +388,25 @@ class Fetcher extends (events__WEBPACK_IMPORTED_MODULE_0___default()) {
 /*!***************************!*\
   !*** ./src/core/index.js ***!
   \***************************/
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "Fetcher": () => (/* reexport safe */ _fetcher__WEBPACK_IMPORTED_MODULE_0__["default"]),
-/* harmony export */   "SignalWs": () => (/* reexport safe */ _signal_ws__WEBPACK_IMPORTED_MODULE_1__["default"]),
-/* harmony export */   "getBrowserRTC": () => (/* binding */ getBrowserRTC)
-/* harmony export */ });
-/* harmony import */ var _fetcher__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./fetcher */ "./src/core/fetcher.js");
-/* harmony import */ var _signal_ws__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./signal-ws */ "./src/core/signal-ws.js");
 
 
+Object.defineProperty(exports, "__esModule", ({
+  value: true
+}));
+exports.getBrowserRTC = exports.SignalWs = exports.Fetcher = undefined;
+
+var _fetcher = __webpack_require__(/*! ./fetcher */ "./src/core/fetcher.js");
+
+var _fetcher2 = _interopRequireDefault(_fetcher);
+
+var _signalWs = __webpack_require__(/*! ./signal-ws */ "./src/core/signal-ws.js");
+
+var _signalWs2 = _interopRequireDefault(_signalWs);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function getBrowserRTC() {
   if (typeof globalThis === 'undefined') return null;
@@ -363,7 +419,9 @@ function getBrowserRTC() {
   return wrtc;
 }
 
-
+exports.Fetcher = _fetcher2.default;
+exports.SignalWs = _signalWs2.default;
+exports.getBrowserRTC = getBrowserRTC;
 
 /***/ }),
 
@@ -371,93 +429,221 @@ function getBrowserRTC() {
 /*!*******************************!*\
   !*** ./src/core/signal-ws.js ***!
   \*******************************/
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+/***/ ((module, exports, __webpack_require__) => {
 
 "use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
-/* harmony export */ });
-/* harmony import */ var events__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! events */ "./node_modules/events/events.js");
-/* harmony import */ var events__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(events__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var reconnecting_websocket__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! reconnecting-websocket */ "./node_modules/reconnecting-websocket/dist/index.js");
-/* harmony import */ var reconnecting_websocket__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(reconnecting_websocket__WEBPACK_IMPORTED_MODULE_1__);
 
 
+Object.defineProperty(exports, "__esModule", ({
+    value: true
+}));
 
-class SignalWs extends (events__WEBPACK_IMPORTED_MODULE_0___default()) {
-  constructor(engine, peerId, config) {
-    super();
-    this.engine = engine;
-    this.peerId = peerId;
-    this.config = config;
-    this.connected = false;
-    this._ws = this._init(peerId);
-  }
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-  _init(id) {
-    const {
-      logger
-    } = this.engine;
-    const wsOptions = {
-      maxRetries: this.config.wsMaxRetries,
-      minReconnectionDelay: this.config.wsReconnectInterval * 1000
-    };
-    let queryStr = `?id=${id}`;
-    let websocket = new (reconnecting_websocket__WEBPACK_IMPORTED_MODULE_1___default())(this.config.wsSignalerAddr + queryStr, undefined, wsOptions);
+var _events = __webpack_require__(/*! events */ "./node_modules/events/events.js");
 
-    websocket.onopen = () => {
-      logger.info('Signaler websocket connection opened');
-      this.connected = true;
-      if (this.onopen) this.onopen();
-    };
+var _events2 = _interopRequireDefault(_events);
 
-    websocket.push = websocket.send;
+var _reconnectingWebsocket = __webpack_require__(/*! reconnecting-websocket */ "./node_modules/reconnecting-websocket/dist/index.js");
 
-    websocket.send = msg => {
-      let msgStr = JSON.stringify(Object.assign({
-        peer_id: id
-      }, msg));
-      websocket.push(msgStr);
-    };
+var _reconnectingWebsocket2 = _interopRequireDefault(_reconnectingWebsocket);
 
-    websocket.onmessage = e => {
-      if (this.onmessage) this.onmessage(e);
-    }; //websocket断开时清除datachannel
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var SignalWs = function (_EventEmitter) {
+    _inherits(SignalWs, _EventEmitter);
+
+    function SignalWs(engine, peerId, config) {
+        _classCallCheck(this, SignalWs);
+
+        var _this = _possibleConstructorReturn(this, (SignalWs.__proto__ || Object.getPrototypeOf(SignalWs)).call(this));
+
+        _this.engine = engine;
+        _this.peerId = peerId;
+        _this.config = config;
+        _this.connected = false;
+        _this._ws = _this._init(peerId);
+        return _this;
+    }
+
+    _createClass(SignalWs, [{
+        key: '_init',
+        value: function _init(id) {
+            var _this2 = this;
+
+            var logger = this.engine.logger;
+
+            var wsOptions = {
+                maxRetries: this.config.wsMaxRetries,
+                minReconnectionDelay: this.config.wsReconnectInterval * 1000
+            };
+            var queryStr = '?id=' + id;
+            var websocket = new _reconnectingWebsocket2.default(this.config.wsSignalerAddr + queryStr, undefined, wsOptions);
+
+            websocket.onopen = function () {
+                logger.info('Signaler websocket connection opened');
+
+                _this2.connected = true;
+                if (_this2.onopen) _this2.onopen();
+            };
+
+            websocket.push = websocket.send;
+
+            websocket.send = function (msg) {
+                var msgStr = JSON.stringify(Object.assign({ peer_id: id }, msg));
+                websocket.push(msgStr);
+            };
+
+            websocket.onmessage = function (e) {
+                if (_this2.onmessage) _this2.onmessage(e);
+            };
+            //websocket断开时清除datachannel
+            websocket.onclose = function () {
+                logger.warn('Signaler websocket closed');
+                if (_this2.onclose) _this2.onclose();
+                _this2.connected = false;
+            };
+            return websocket;
+        }
+    }, {
+        key: 'sendSignal',
+        value: function sendSignal(remotePeerId, data) {
+            var msg = {
+                action: 'signal',
+                peer_id: this.peerId,
+                to_peer_id: remotePeerId,
+                data: data
+            };
+            this.send(msg);
+        }
+    }, {
+        key: 'send',
+        value: function send(msg) {
+            this._ws.send(msg);
+        }
+    }, {
+        key: 'close',
+        value: function close() {
+            this._ws.close();
+            this._ws = null;
+        }
+    }]);
+
+    return SignalWs;
+}(_events2.default);
+
+exports["default"] = SignalWs;
+module.exports = exports['default'];
+
+/***/ }),
+
+/***/ "./src/index.js":
+/*!**********************!*\
+  !*** ./src/index.js ***!
+  \**********************/
+/***/ ((module, exports, __webpack_require__) => {
+
+"use strict";
 
 
-    websocket.onclose = () => {
-      logger.warn(`Signaler websocket closed`);
-      if (this.onclose) this.onclose();
-      this.connected = false;
-    };
+Object.defineProperty(exports, "__esModule", ({
+    value: true
+}));
 
-    return websocket;
-  }
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-  sendSignal(remotePeerId, data) {
-    let msg = {
-      action: 'signal',
-      peer_id: this.peerId,
-      to_peer_id: remotePeerId,
-      data: data
-    };
-    this.send(msg);
-  }
+var _hls = __webpack_require__(/*! hls.js */ "./node_modules/hls.js/dist/hls.js");
 
-  send(msg) {
-    this._ws.send(msg);
-  }
+var _hls2 = _interopRequireDefault(_hls);
 
-  close() {
-    this._ws.close();
+var _p2p = __webpack_require__(/*! ./p2p.js */ "./src/p2p.js");
 
-    this._ws = null;
-  }
+var _p2p2 = _interopRequireDefault(_p2p);
 
-}
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (SignalWs);
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+// 文档地址
+// https://hls-js.netlify.app/api-docs
+
+console.log("start...");
+
+var recommendedHlsjsConfig = {
+    maxBufferSize: 0,
+    maxBufferLength: 30,
+    liveSyncDuration: 30,
+    fragLoadingTimeOut: 4000 // used by fragment-loader
+};
+
+var P2PHlsjs = function (_Hlsjs) {
+    _inherits(P2PHlsjs, _Hlsjs);
+
+    _createClass(P2PHlsjs, null, [{
+        key: 'P2PEvents',
+        get: function get() {
+            console.log("p2p:", P2PEngine.Events);
+            return P2PEngine.Events;
+        }
+    }, {
+        key: 'uaParserResult',
+        get: function get() {
+            return P2PEngine.uaParserResult;
+        }
+    }]);
+
+    function P2PHlsjs() {
+        var config = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
+        _classCallCheck(this, P2PHlsjs);
+
+        console.log("p2p constructor:", config);
+
+        var p2pConfig = config.p2pConfig || {};
+        delete config.p2pConfig;
+
+        var mergedHlsjsConfig = Object.assign({}, recommendedHlsjsConfig, config);
+
+        //test
+        mergedHlsjsConfig.debug = false;
+
+        var _this = _possibleConstructorReturn(this, (P2PHlsjs.__proto__ || Object.getPrototypeOf(P2PHlsjs)).call(this, mergedHlsjsConfig));
+
+        if (_p2p2.default.WEBRTC_SUPPORT) {
+            _this.engine = new _p2p2.default(_this, p2pConfig);
+        }
+        return _this;
+    }
+
+    _createClass(P2PHlsjs, [{
+        key: 'enableP2P',
+        value: function enableP2P() {
+            this.engine.enableP2P();
+        }
+    }, {
+        key: 'disableP2P',
+        value: function disableP2P() {
+            this.engine.disableP2P();
+        }
+    }]);
+
+    return P2PHlsjs;
+}(_hls2.default);
+
+P2PHlsjs.engineVersion = _p2p2.default.version;
+
+exports["default"] = P2PHlsjs;
+module.exports = exports['default'];
 
 /***/ }),
 
@@ -465,174 +651,231 @@ class SignalWs extends (events__WEBPACK_IMPORTED_MODULE_0___default()) {
 /*!********************!*\
   !*** ./src/p2p.js ***!
   \********************/
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+/***/ ((module, exports, __webpack_require__) => {
 
 "use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
-/* harmony export */ });
-/* harmony import */ var events__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! events */ "./node_modules/events/events.js");
-/* harmony import */ var events__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(events__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var ua_parser_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ua-parser-js */ "./node_modules/ua-parser-js/src/ua-parser.js");
-/* harmony import */ var ua_parser_js__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(ua_parser_js__WEBPACK_IMPORTED_MODULE_1__);
-/* harmony import */ var _utils_logger__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./utils/logger */ "./src/utils/logger.js");
-/* harmony import */ var _config__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./config */ "./src/config.js");
-/* harmony import */ var _core__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./core */ "./src/core/index.js");
-/* harmony import */ var _bt__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./bt */ "./src/bt/index.js");
 
 
+Object.defineProperty(exports, "__esModule", ({
+    value: true
+}));
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _events = __webpack_require__(/*! events */ "./node_modules/events/events.js");
+
+var _events2 = _interopRequireDefault(_events);
+
+var _uaParserJs = __webpack_require__(/*! ua-parser-js */ "./node_modules/ua-parser-js/src/ua-parser.js");
+
+var _uaParserJs2 = _interopRequireDefault(_uaParserJs);
+
+var _logger = __webpack_require__(/*! ./utils/logger */ "./src/utils/logger.js");
+
+var _logger2 = _interopRequireDefault(_logger);
+
+var _config = __webpack_require__(/*! ./config */ "./src/config.js");
+
+var _config2 = _interopRequireDefault(_config);
+
+var _core = __webpack_require__(/*! ./core */ "./src/core/index.js");
+
+var _bt = __webpack_require__(/*! ./bt */ "./src/bt/index.js");
+
+var _bt2 = _interopRequireDefault(_bt);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var uaParserResult = new _uaParserJs2.default().getResult();
+
+var p2p = function (_EventEmitter) {
+    _inherits(p2p, _EventEmitter);
+
+    function p2p(hlsjs, p2pConfig) {
+        _classCallCheck(this, p2p);
+
+        var _this = _possibleConstructorReturn(this, (p2p.__proto__ || Object.getPrototypeOf(p2p)).call(this));
+
+        _this.config = Object.assign({}, _config2.default, p2pConfig);
+        _this.hlsjs = hlsjs;
+
+        //默认开启P2P
+        _this.p2pEnabled = _this.config.disableP2P === false ? false : true;
+        hlsjs.config.currLoaded = hlsjs.config.currPlay = 0;
+
+        var onLevelLoaded = function onLevelLoaded(event, data) {
+
+            console.log('onLevelLoaded', event, data);
+
+            var isLive = data.details.live;
+            _this.config.live = isLive;
+            var channel = hlsjs.url.split('?')[0];
+
+            //初始化logger
+            var logger = new _logger2.default(_this.config, channel);
+            _this.hlsjs.config.logger = _this.logger = logger;
+
+            _this._init(channel);
+            hlsjs.off(hlsjs.constructor.Events.LEVEL_LOADED, onLevelLoaded);
+        };
+
+        hlsjs.on(hlsjs.constructor.Events.LEVEL_LOADED, onLevelLoaded);
+        return _this;
+    }
+
+    _createClass(p2p, [{
+        key: '_init',
+        value: function _init(channel) {
+            var _this2 = this;
+
+            console.log('_init', channel);
+            var logger = this.logger;
+            //上传浏览器信息
+
+            var browserInfo = {
+                browser: uaParserResult.browser.name,
+                device: uaParserResult.device.type === 'mobile' ? 'mobile' : 'PC',
+                os: uaParserResult.os.name
+            };
+
+            this.hlsjs.config.p2pEnabled = this.p2pEnabled;
+            //实例化BufferManager
+            // this.bufMgr = new BufferManager(this, this.config);
+            // this.hlsjs.config.bufMgr = this.bufMgr;
+
+            //实例化Fetcher
+            var fetcher = new _core.Fetcher(this, this.config.key, window.encodeURIComponent(channel), this.config.announce, browserInfo);
+            this.fetcher = fetcher;
+            //实例化tracker服务器
+            this.signaler = new _bt2.default(this, fetcher, this.config);
+
+            // this.signaler.scheduler.bufferManager = this.bufMgr;
+            // //替换fLoader
+            // this.hlsjs.config.fLoader = FragLoader;
+            // //向fLoader导入scheduler
+            // this.hlsjs.config.scheduler = this.signaler.scheduler;
+            // //在fLoader中使用fetcher
+            // this.hlsjs.config.fetcher = fetcher;
 
 
+            this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_LOADING, function (id, data) {
+                // console.log('FRAG_LOADING: ' + JSON.stringify(data.frag));
+                console.log('FRAG_LOADING: ', data.frag);
+                logger.debug('FRAG_LOADING: ' + data.frag.sn);
+                // this.signaler.currentLoadingSN = data.frag.sn;
+            });
 
+            //防止重复连接ws
+            this.signalTried = false;
+            this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_LOADED, function (id, data) {
 
-const uaParserResult = new (ua_parser_js__WEBPACK_IMPORTED_MODULE_1___default())().getResult();
+                console.log(_this2.hlsjs.constructor.Events.FRAG_LOADED, data);
+                //let sn = data.frag.sn;
+                //this.hlsjs.config.currLoaded = sn;
 
-class p2p extends (events__WEBPACK_IMPORTED_MODULE_0___default()) {
-  constructor(hlsjs, p2pConfig) {
-    super();
-    this.config = Object.assign({}, _config__WEBPACK_IMPORTED_MODULE_3__["default"], p2pConfig);
-    this.hlsjs = hlsjs; //默认开启P2P
+                //用于BT算法
+                //this.signaler.currentLoadedSN = sn;                                
+                //this.hlsjs.config.currLoadedDuration = data.frag.duration;
+                // let bitrate = Math.round(data.frag.stats.loaded*8/data.frag.duration);
+                // console.log('bitrate:',bitrate);
+                //&& !this.signaler.connected
+                if (!_this2.signalTried && _this2.config.p2pEnabled) {
 
-    this.p2pEnabled = this.config.disableP2P === false ? false : true;
-    hlsjs.config.currLoaded = hlsjs.config.currPlay = 0;
+                    // this.signaler.scheduler.bitrate = bitrate;
+                    // logger.info(`FRAG_LOADED bitrate ${bitrate}`);
 
-    const onLevelLoaded = (event, data) => {
-      console.log('onLevelLoaded', event, data);
-      const isLive = data.details.live;
-      this.config.live = isLive;
-      let channel = hlsjs.url.split('?')[0]; //初始化logger
+                    _this2.signaler.resumeP2P();
+                    _this2.signalTried = true;
+                }
+                // this.streamingRate = (this.streamingRate*this.fragLoadedCounter + bitrate)/(++this.fragLoadedCounter);
+                // this.signaler.scheduler.streamingRate = Math.floor(this.streamingRate);
+                // if (!data.frag.loadByHTTP) {
+                //     data.frag.loadByP2P = false;
+                //     data.frag.loadByHTTP = true;
+                // }
+            });
 
-      let logger = new _utils_logger__WEBPACK_IMPORTED_MODULE_2__["default"](this.config, channel);
-      this.hlsjs.config.logger = this.logger = logger;
+            // this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_CHANGED, (id, data) => {
+            //     // log('FRAG_CHANGED: '+JSON.stringify(data.frag, null, 2));
+            //     console.log('FRAG_CHANGED: '+data.frag.sn);
+            //     const sn = data.frag.sn;
+            //     this.hlsjs.config.currPlay = sn;
+            //     // this.signaler.currentPlaySN = sn;
+            // });
 
-      this._init(channel);
+            // this.hlsjs.on(this.hlsjs.constructor.Events.ERROR, (event, data) => {
+            //     logger.error(`errorType ${data.type} details ${data.details} errorFatal ${data.fatal}`);
+            //     const errDetails = this.hlsjs.constructor.ErrorDetails;
+            //     switch (data.details) {
+            //         case errDetails.FRAG_LOAD_ERROR:
+            //         case errDetails.FRAG_LOAD_TIMEOUT:
+            //             this.fetcher.errsFragLoad ++;
+            //             break;
+            //         case errDetails.BUFFER_STALLED_ERROR:
+            //             this.fetcher.errsBufStalled ++;
+            //             break;
+            //         case errDetails.INTERNAL_EXCEPTION:
+            //             this.fetcher.errsInternalExpt ++;
+            //             break;
+            //         default:
+            //     }
+            // });
 
-      hlsjs.off(hlsjs.constructor.Events.LEVEL_LOADED, onLevelLoaded);
-    };
+            this.hlsjs.on(this.hlsjs.constructor.Events.DESTROYING, function () {
+                // log('DESTROYING: '+JSON.stringify(frag));
+                _this2.signaler.destroy();
+                _this2.signaler = null;
+            });
+        }
 
-    hlsjs.on(hlsjs.constructor.Events.LEVEL_LOADED, onLevelLoaded);
-  }
+        //停止p2p
 
-  _init(channel) {
-    console.log('_init', channel);
-    const {
-      logger
-    } = this; //上传浏览器信息
+    }, {
+        key: 'disableP2P',
+        value: function disableP2P() {
+            console.log("disableP2P!!!!");
+            // const { logger } = this;
+            // logger.warn(`disableP2P`);
+            // if (this.p2pEnabled) {
+            //     this.p2pEnabled = false;
+            //     this.config.p2pEnabled = this.hlsjs.config.p2pEnabled = this.p2pEnabled;
+            //     if (this.signaler) {
+            //         this.signaler.stopP2P();
+            //     }
+            // }
+        }
 
-    let browserInfo = {
-      browser: uaParserResult.browser.name,
-      device: uaParserResult.device.type === 'mobile' ? 'mobile' : 'PC',
-      os: uaParserResult.os.name
-    };
-    this.hlsjs.config.p2pEnabled = this.p2pEnabled; //实例化BufferManager
-    // this.bufMgr = new BufferManager(this, this.config);
-    // this.hlsjs.config.bufMgr = this.bufMgr;
-    //实例化Fetcher
+        //在停止的情况下重新启动P2P
 
-    let fetcher = new _core__WEBPACK_IMPORTED_MODULE_4__.Fetcher(this, this.config.key, window.encodeURIComponent(channel), this.config.announce, browserInfo);
-    this.fetcher = fetcher; //实例化tracker服务器
+    }, {
+        key: 'enableP2P',
+        value: function enableP2P() {
+            console.log("enableP2P!!!!");
+            // const { logger } = this;
+            // logger.warn(`enableP2P`);
+            // if (!this.p2pEnabled) {
+            //     this.p2pEnabled = true;
+            //     this.config.p2pEnabled = this.hlsjs.config.p2pEnabled = this.p2pEnabled;
+            //     if (this.signaler) {
+            //         this.signaler.resumeP2P();
+            //     }
+            // }
+        }
+    }]);
 
-    this.signaler = new _bt__WEBPACK_IMPORTED_MODULE_5__["default"](this, fetcher, this.config); // this.signaler.scheduler.bufferManager = this.bufMgr;
-    // //替换fLoader
-    // this.hlsjs.config.fLoader = FragLoader;
-    // //向fLoader导入scheduler
-    // this.hlsjs.config.scheduler = this.signaler.scheduler;
-    // //在fLoader中使用fetcher
-    // this.hlsjs.config.fetcher = fetcher;
+    return p2p;
+}(_events2.default);
 
-    this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_LOADING, (id, data) => {
-      // console.log('FRAG_LOADING: ' + JSON.stringify(data.frag));
-      console.log('FRAG_LOADING: ', data.frag);
-      logger.debug('FRAG_LOADING: ' + data.frag.sn); // this.signaler.currentLoadingSN = data.frag.sn;
-    }); //防止重复连接ws
-
-    this.signalTried = false;
-    this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_LOADED, (id, data) => {
-      console.log(this.hlsjs.constructor.Events.FRAG_LOADED, data); //let sn = data.frag.sn;
-      //this.hlsjs.config.currLoaded = sn;
-      //用于BT算法
-      //this.signaler.currentLoadedSN = sn;                                
-      //this.hlsjs.config.currLoadedDuration = data.frag.duration;
-      // let bitrate = Math.round(data.frag.stats.loaded*8/data.frag.duration);
-      // console.log('bitrate:',bitrate);
-      //&& !this.signaler.connected
-
-      if (!this.signalTried && this.config.p2pEnabled) {
-        // this.signaler.scheduler.bitrate = bitrate;
-        // logger.info(`FRAG_LOADED bitrate ${bitrate}`);
-        this.signaler.resumeP2P();
-        this.signalTried = true;
-      } // this.streamingRate = (this.streamingRate*this.fragLoadedCounter + bitrate)/(++this.fragLoadedCounter);
-      // this.signaler.scheduler.streamingRate = Math.floor(this.streamingRate);
-      // if (!data.frag.loadByHTTP) {
-      //     data.frag.loadByP2P = false;
-      //     data.frag.loadByHTTP = true;
-      // }
-
-    }); // this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_CHANGED, (id, data) => {
-    //     // log('FRAG_CHANGED: '+JSON.stringify(data.frag, null, 2));
-    //     console.log('FRAG_CHANGED: '+data.frag.sn);
-    //     const sn = data.frag.sn;
-    //     this.hlsjs.config.currPlay = sn;
-    //     // this.signaler.currentPlaySN = sn;
-    // });
-    // this.hlsjs.on(this.hlsjs.constructor.Events.ERROR, (event, data) => {
-    //     logger.error(`errorType ${data.type} details ${data.details} errorFatal ${data.fatal}`);
-    //     const errDetails = this.hlsjs.constructor.ErrorDetails;
-    //     switch (data.details) {
-    //         case errDetails.FRAG_LOAD_ERROR:
-    //         case errDetails.FRAG_LOAD_TIMEOUT:
-    //             this.fetcher.errsFragLoad ++;
-    //             break;
-    //         case errDetails.BUFFER_STALLED_ERROR:
-    //             this.fetcher.errsBufStalled ++;
-    //             break;
-    //         case errDetails.INTERNAL_EXCEPTION:
-    //             this.fetcher.errsInternalExpt ++;
-    //             break;
-    //         default:
-    //     }
-    // });
-
-    this.hlsjs.on(this.hlsjs.constructor.Events.DESTROYING, () => {
-      // log('DESTROYING: '+JSON.stringify(frag));
-      this.signaler.destroy();
-      this.signaler = null;
-    });
-  } //停止p2p
-
-
-  disableP2P() {
-    console.log("disableP2P!!!!"); // const { logger } = this;
-    // logger.warn(`disableP2P`);
-    // if (this.p2pEnabled) {
-    //     this.p2pEnabled = false;
-    //     this.config.p2pEnabled = this.hlsjs.config.p2pEnabled = this.p2pEnabled;
-    //     if (this.signaler) {
-    //         this.signaler.stopP2P();
-    //     }
-    // }
-  } //在停止的情况下重新启动P2P
-
-
-  enableP2P() {
-    console.log("enableP2P!!!!"); // const { logger } = this;
-    // logger.warn(`enableP2P`);
-    // if (!this.p2pEnabled) {
-    //     this.p2pEnabled = true;
-    //     this.config.p2pEnabled = this.hlsjs.config.p2pEnabled = this.p2pEnabled;
-    //     if (this.signaler) {
-    //         this.signaler.resumeP2P();
-    //     }
-    // }
-  }
-
-}
-
-p2p.WEBRTC_SUPPORT = !!(0,_core__WEBPACK_IMPORTED_MODULE_4__.getBrowserRTC)();
+p2p.WEBRTC_SUPPORT = !!(0, _core.getBrowserRTC)();
 p2p.version = "0.0.1";
-/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (p2p);
+exports["default"] = p2p;
+module.exports = exports['default'];
 
 /***/ }),
 
@@ -640,153 +883,169 @@ p2p.version = "0.0.1";
 /*!*****************************!*\
   !*** ./src/utils/logger.js ***!
   \*****************************/
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+/***/ ((module, exports, __webpack_require__) => {
 
 "use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
-/* harmony export */ });
-/* harmony import */ var reconnecting_websocket__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! reconnecting-websocket */ "./node_modules/reconnecting-websocket/dist/index.js");
-/* harmony import */ var reconnecting_websocket__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(reconnecting_websocket__WEBPACK_IMPORTED_MODULE_0__);
 
-const logTypes = {
-  debug: 0,
-  info: 1,
-  warn: 2,
-  error: 3,
-  none: 4
+
+Object.defineProperty(exports, "__esModule", ({
+    value: true
+}));
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _reconnectingWebsocket = __webpack_require__(/*! reconnecting-websocket */ "./node_modules/reconnecting-websocket/dist/index.js");
+
+var _reconnectingWebsocket2 = _interopRequireDefault(_reconnectingWebsocket);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var logTypes = {
+    debug: 0,
+    info: 1,
+    warn: 2,
+    error: 3,
+    none: 4
 };
-const typesP = ['_debugP', '_infoP', '_warnP', '_errorP'];
-const typesU = ['_debugU', '_infoU', '_warnU', '_errorU'];
 
-class Logger {
-  constructor(config, channel) {
-    this.config = config;
-    this.connected = false;
+var typesP = ['_debugP', '_infoP', '_warnP', '_errorP'];
+var typesU = ['_debugU', '_infoU', '_warnU', '_errorU'];
 
-    if (config.enableLogUpload) {
-      try {
-        this._ws = this._initWs(channel);
-      } catch (e) {
-        this._ws = null;
-      }
+var Logger = function () {
+    function Logger(config, channel) {
+        _classCallCheck(this, Logger);
+
+        this.config = config;
+        this.connected = false;
+        if (config.enableLogUpload) {
+            try {
+                this._ws = this._initWs(channel);
+            } catch (e) {
+                this._ws = null;
+            }
+        }
+        if (!(config.logLevel in logTypes)) config.logLevel = 'none';
+        if (!(config.logUploadLevel in logTypes)) config.logUploadLevel = 'none';
+        for (var i = 0; i < logTypes[config.logLevel]; i++) {
+            this[typesP[i]] = noop;
+        }
+        for (var _i = 0; _i < logTypes[config.logUploadLevel]; _i++) {
+            this[typesU[_i]] = noop;
+        }
+        this.identifier = '';
     }
 
-    if (!(config.logLevel in logTypes)) config.logLevel = 'none';
-    if (!(config.logUploadLevel in logTypes)) config.logUploadLevel = 'none';
+    _createClass(Logger, [{
+        key: 'debug',
+        value: function debug(msg) {
+            this._debugP(msg);
+            this._debugU(msg);
+        }
+    }, {
+        key: 'info',
+        value: function info(msg) {
+            this._infoP(msg);
+            this._infoU(msg);
+        }
+    }, {
+        key: 'warn',
+        value: function warn(msg) {
+            this._warnP(msg);
+            this._warnU(msg);
+        }
+    }, {
+        key: 'error',
+        value: function error(msg) {
+            this._errorP(msg);
+            this._errorU(msg);
+        }
+    }, {
+        key: '_debugP',
+        value: function _debugP(msg) {
+            console.log(msg);
+        }
+    }, {
+        key: '_infoP',
+        value: function _infoP(msg) {
+            console.info(msg);
+        }
+    }, {
+        key: '_warnP',
+        value: function _warnP(msg) {
+            console.warn(msg);
+        }
+    }, {
+        key: '_errorP',
+        value: function _errorP(msg) {
+            console.error(msg);
+        }
+    }, {
+        key: '_debugU',
+        value: function _debugU(msg) {
+            msg = '[' + this.identifier + ' debug] > ' + msg;
+            this._uploadLog(msg);
+        }
+    }, {
+        key: '_infoU',
+        value: function _infoU(msg) {
+            msg = '[' + this.identifier + ' info] > ' + msg;
+            this._uploadLog(msg);
+        }
+    }, {
+        key: '_warnU',
+        value: function _warnU(msg) {
+            msg = '[' + this.identifier + ' warn] > ' + msg;
+            this._uploadLog(msg);
+        }
+    }, {
+        key: '_errorU',
+        value: function _errorU(msg) {
+            msg = '[' + this.identifier + ' error] > ' + msg;
+            this._uploadLog(msg);
+        }
+    }, {
+        key: '_uploadLog',
+        value: function _uploadLog(msg) {
+            if (!this.connected) return;
+            this._ws.send(msg);
+        }
+    }, {
+        key: '_initWs',
+        value: function _initWs(channel) {
+            var _this = this;
 
-    for (let i = 0; i < logTypes[config.logLevel]; i++) {
-      this[typesP[i]] = noop;
-    }
+            var wsOptions = {
+                maxRetries: this.config.wsMaxRetries,
+                minReconnectionDelay: this.config.wsReconnectInterval * 1000
+            };
+            var ws = new _reconnectingWebsocket2.default(this.config.logUploadAddr + ('?info_hash=' + window.encodeURIComponent(channel)), undefined, wsOptions);
+            ws.onopen = function () {
+                _this.debug('Log websocket connection opened');
+                _this.connected = true;
+            };
+            // ws.onmessage = (e) => {
+            //
+            //
+            // };
 
-    for (let i = 0; i < logTypes[config.logUploadLevel]; i++) {
-      this[typesU[i]] = noop;
-    }
+            //websocket断开时清除datachannel
+            ws.onclose = function () {
+                _this.warn('Log websocket closed');
+                _this.connected = false;
+            };
+            return ws;
+        }
+    }]);
 
-    this.identifier = '';
-  }
-
-  debug(msg) {
-    this._debugP(msg);
-
-    this._debugU(msg);
-  }
-
-  info(msg) {
-    this._infoP(msg);
-
-    this._infoU(msg);
-  }
-
-  warn(msg) {
-    this._warnP(msg);
-
-    this._warnU(msg);
-  }
-
-  error(msg) {
-    this._errorP(msg);
-
-    this._errorU(msg);
-  }
-
-  _debugP(msg) {
-    console.log(msg);
-  }
-
-  _infoP(msg) {
-    console.info(msg);
-  }
-
-  _warnP(msg) {
-    console.warn(msg);
-  }
-
-  _errorP(msg) {
-    console.error(msg);
-  }
-
-  _debugU(msg) {
-    msg = `[${this.identifier} debug] > ${msg}`;
-
-    this._uploadLog(msg);
-  }
-
-  _infoU(msg) {
-    msg = `[${this.identifier} info] > ${msg}`;
-
-    this._uploadLog(msg);
-  }
-
-  _warnU(msg) {
-    msg = `[${this.identifier} warn] > ${msg}`;
-
-    this._uploadLog(msg);
-  }
-
-  _errorU(msg) {
-    msg = `[${this.identifier} error] > ${msg}`;
-
-    this._uploadLog(msg);
-  }
-
-  _uploadLog(msg) {
-    if (!this.connected) return;
-
-    this._ws.send(msg);
-  }
-
-  _initWs(channel) {
-    const wsOptions = {
-      maxRetries: this.config.wsMaxRetries,
-      minReconnectionDelay: this.config.wsReconnectInterval * 1000
-    };
-    let ws = new (reconnecting_websocket__WEBPACK_IMPORTED_MODULE_0___default())(this.config.logUploadAddr + `?info_hash=${window.encodeURIComponent(channel)}`, undefined, wsOptions);
-
-    ws.onopen = () => {
-      this.debug('Log websocket connection opened');
-      this.connected = true;
-    }; // ws.onmessage = (e) => {
-    //
-    //
-    // };
-    //websocket断开时清除datachannel
-
-
-    ws.onclose = () => {
-      this.warn(`Log websocket closed`);
-      this.connected = false;
-    };
-
-    return ws;
-  }
-
-}
+    return Logger;
+}();
 
 function noop() {}
 
-/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (Logger);
+exports["default"] = Logger;
+module.exports = exports['default'];
 
 /***/ }),
 
@@ -30979,6 +31238,320 @@ if (typeof Object.create === 'function') {
 
 /***/ }),
 
+/***/ "./node_modules/js-base64/base64.js":
+/*!******************************************!*\
+  !*** ./node_modules/js-base64/base64.js ***!
+  \******************************************/
+/***/ (function(module, __unused_webpack_exports, __webpack_require__) {
+
+//
+// THIS FILE IS AUTOMATICALLY GENERATED! DO NOT EDIT BY HAND!
+//
+;
+(function (global, factory) {
+     true
+        ? module.exports = factory()
+        : 0;
+}((typeof self !== 'undefined' ? self
+    : typeof window !== 'undefined' ? window
+        : typeof __webpack_require__.g !== 'undefined' ? __webpack_require__.g
+            : this), function () {
+    'use strict';
+    /**
+     *  base64.ts
+     *
+     *  Licensed under the BSD 3-Clause License.
+     *    http://opensource.org/licenses/BSD-3-Clause
+     *
+     *  References:
+     *    http://en.wikipedia.org/wiki/Base64
+     *
+     * @author Dan Kogai (https://github.com/dankogai)
+     */
+    var version = '3.7.2';
+    /**
+     * @deprecated use lowercase `version`.
+     */
+    var VERSION = version;
+    var _hasatob = typeof atob === 'function';
+    var _hasbtoa = typeof btoa === 'function';
+    var _hasBuffer = typeof Buffer === 'function';
+    var _TD = typeof TextDecoder === 'function' ? new TextDecoder() : undefined;
+    var _TE = typeof TextEncoder === 'function' ? new TextEncoder() : undefined;
+    var b64ch = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+    var b64chs = Array.prototype.slice.call(b64ch);
+    var b64tab = (function (a) {
+        var tab = {};
+        a.forEach(function (c, i) { return tab[c] = i; });
+        return tab;
+    })(b64chs);
+    var b64re = /^(?:[A-Za-z\d+\/]{4})*?(?:[A-Za-z\d+\/]{2}(?:==)?|[A-Za-z\d+\/]{3}=?)?$/;
+    var _fromCC = String.fromCharCode.bind(String);
+    var _U8Afrom = typeof Uint8Array.from === 'function'
+        ? Uint8Array.from.bind(Uint8Array)
+        : function (it, fn) {
+            if (fn === void 0) { fn = function (x) { return x; }; }
+            return new Uint8Array(Array.prototype.slice.call(it, 0).map(fn));
+        };
+    var _mkUriSafe = function (src) { return src
+        .replace(/=/g, '').replace(/[+\/]/g, function (m0) { return m0 == '+' ? '-' : '_'; }); };
+    var _tidyB64 = function (s) { return s.replace(/[^A-Za-z0-9\+\/]/g, ''); };
+    /**
+     * polyfill version of `btoa`
+     */
+    var btoaPolyfill = function (bin) {
+        // console.log('polyfilled');
+        var u32, c0, c1, c2, asc = '';
+        var pad = bin.length % 3;
+        for (var i = 0; i < bin.length;) {
+            if ((c0 = bin.charCodeAt(i++)) > 255 ||
+                (c1 = bin.charCodeAt(i++)) > 255 ||
+                (c2 = bin.charCodeAt(i++)) > 255)
+                throw new TypeError('invalid character found');
+            u32 = (c0 << 16) | (c1 << 8) | c2;
+            asc += b64chs[u32 >> 18 & 63]
+                + b64chs[u32 >> 12 & 63]
+                + b64chs[u32 >> 6 & 63]
+                + b64chs[u32 & 63];
+        }
+        return pad ? asc.slice(0, pad - 3) + "===".substring(pad) : asc;
+    };
+    /**
+     * does what `window.btoa` of web browsers do.
+     * @param {String} bin binary string
+     * @returns {string} Base64-encoded string
+     */
+    var _btoa = _hasbtoa ? function (bin) { return btoa(bin); }
+        : _hasBuffer ? function (bin) { return Buffer.from(bin, 'binary').toString('base64'); }
+            : btoaPolyfill;
+    var _fromUint8Array = _hasBuffer
+        ? function (u8a) { return Buffer.from(u8a).toString('base64'); }
+        : function (u8a) {
+            // cf. https://stackoverflow.com/questions/12710001/how-to-convert-uint8-array-to-base64-encoded-string/12713326#12713326
+            var maxargs = 0x1000;
+            var strs = [];
+            for (var i = 0, l = u8a.length; i < l; i += maxargs) {
+                strs.push(_fromCC.apply(null, u8a.subarray(i, i + maxargs)));
+            }
+            return _btoa(strs.join(''));
+        };
+    /**
+     * converts a Uint8Array to a Base64 string.
+     * @param {boolean} [urlsafe] URL-and-filename-safe a la RFC4648 §5
+     * @returns {string} Base64 string
+     */
+    var fromUint8Array = function (u8a, urlsafe) {
+        if (urlsafe === void 0) { urlsafe = false; }
+        return urlsafe ? _mkUriSafe(_fromUint8Array(u8a)) : _fromUint8Array(u8a);
+    };
+    // This trick is found broken https://github.com/dankogai/js-base64/issues/130
+    // const utob = (src: string) => unescape(encodeURIComponent(src));
+    // reverting good old fationed regexp
+    var cb_utob = function (c) {
+        if (c.length < 2) {
+            var cc = c.charCodeAt(0);
+            return cc < 0x80 ? c
+                : cc < 0x800 ? (_fromCC(0xc0 | (cc >>> 6))
+                    + _fromCC(0x80 | (cc & 0x3f)))
+                    : (_fromCC(0xe0 | ((cc >>> 12) & 0x0f))
+                        + _fromCC(0x80 | ((cc >>> 6) & 0x3f))
+                        + _fromCC(0x80 | (cc & 0x3f)));
+        }
+        else {
+            var cc = 0x10000
+                + (c.charCodeAt(0) - 0xD800) * 0x400
+                + (c.charCodeAt(1) - 0xDC00);
+            return (_fromCC(0xf0 | ((cc >>> 18) & 0x07))
+                + _fromCC(0x80 | ((cc >>> 12) & 0x3f))
+                + _fromCC(0x80 | ((cc >>> 6) & 0x3f))
+                + _fromCC(0x80 | (cc & 0x3f)));
+        }
+    };
+    var re_utob = /[\uD800-\uDBFF][\uDC00-\uDFFFF]|[^\x00-\x7F]/g;
+    /**
+     * @deprecated should have been internal use only.
+     * @param {string} src UTF-8 string
+     * @returns {string} UTF-16 string
+     */
+    var utob = function (u) { return u.replace(re_utob, cb_utob); };
+    //
+    var _encode = _hasBuffer
+        ? function (s) { return Buffer.from(s, 'utf8').toString('base64'); }
+        : _TE
+            ? function (s) { return _fromUint8Array(_TE.encode(s)); }
+            : function (s) { return _btoa(utob(s)); };
+    /**
+     * converts a UTF-8-encoded string to a Base64 string.
+     * @param {boolean} [urlsafe] if `true` make the result URL-safe
+     * @returns {string} Base64 string
+     */
+    var encode = function (src, urlsafe) {
+        if (urlsafe === void 0) { urlsafe = false; }
+        return urlsafe
+            ? _mkUriSafe(_encode(src))
+            : _encode(src);
+    };
+    /**
+     * converts a UTF-8-encoded string to URL-safe Base64 RFC4648 §5.
+     * @returns {string} Base64 string
+     */
+    var encodeURI = function (src) { return encode(src, true); };
+    // This trick is found broken https://github.com/dankogai/js-base64/issues/130
+    // const btou = (src: string) => decodeURIComponent(escape(src));
+    // reverting good old fationed regexp
+    var re_btou = /[\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-\xBF]{3}/g;
+    var cb_btou = function (cccc) {
+        switch (cccc.length) {
+            case 4:
+                var cp = ((0x07 & cccc.charCodeAt(0)) << 18)
+                    | ((0x3f & cccc.charCodeAt(1)) << 12)
+                    | ((0x3f & cccc.charCodeAt(2)) << 6)
+                    | (0x3f & cccc.charCodeAt(3)), offset = cp - 0x10000;
+                return (_fromCC((offset >>> 10) + 0xD800)
+                    + _fromCC((offset & 0x3FF) + 0xDC00));
+            case 3:
+                return _fromCC(((0x0f & cccc.charCodeAt(0)) << 12)
+                    | ((0x3f & cccc.charCodeAt(1)) << 6)
+                    | (0x3f & cccc.charCodeAt(2)));
+            default:
+                return _fromCC(((0x1f & cccc.charCodeAt(0)) << 6)
+                    | (0x3f & cccc.charCodeAt(1)));
+        }
+    };
+    /**
+     * @deprecated should have been internal use only.
+     * @param {string} src UTF-16 string
+     * @returns {string} UTF-8 string
+     */
+    var btou = function (b) { return b.replace(re_btou, cb_btou); };
+    /**
+     * polyfill version of `atob`
+     */
+    var atobPolyfill = function (asc) {
+        // console.log('polyfilled');
+        asc = asc.replace(/\s+/g, '');
+        if (!b64re.test(asc))
+            throw new TypeError('malformed base64.');
+        asc += '=='.slice(2 - (asc.length & 3));
+        var u24, bin = '', r1, r2;
+        for (var i = 0; i < asc.length;) {
+            u24 = b64tab[asc.charAt(i++)] << 18
+                | b64tab[asc.charAt(i++)] << 12
+                | (r1 = b64tab[asc.charAt(i++)]) << 6
+                | (r2 = b64tab[asc.charAt(i++)]);
+            bin += r1 === 64 ? _fromCC(u24 >> 16 & 255)
+                : r2 === 64 ? _fromCC(u24 >> 16 & 255, u24 >> 8 & 255)
+                    : _fromCC(u24 >> 16 & 255, u24 >> 8 & 255, u24 & 255);
+        }
+        return bin;
+    };
+    /**
+     * does what `window.atob` of web browsers do.
+     * @param {String} asc Base64-encoded string
+     * @returns {string} binary string
+     */
+    var _atob = _hasatob ? function (asc) { return atob(_tidyB64(asc)); }
+        : _hasBuffer ? function (asc) { return Buffer.from(asc, 'base64').toString('binary'); }
+            : atobPolyfill;
+    //
+    var _toUint8Array = _hasBuffer
+        ? function (a) { return _U8Afrom(Buffer.from(a, 'base64')); }
+        : function (a) { return _U8Afrom(_atob(a), function (c) { return c.charCodeAt(0); }); };
+    /**
+     * converts a Base64 string to a Uint8Array.
+     */
+    var toUint8Array = function (a) { return _toUint8Array(_unURI(a)); };
+    //
+    var _decode = _hasBuffer
+        ? function (a) { return Buffer.from(a, 'base64').toString('utf8'); }
+        : _TD
+            ? function (a) { return _TD.decode(_toUint8Array(a)); }
+            : function (a) { return btou(_atob(a)); };
+    var _unURI = function (a) { return _tidyB64(a.replace(/[-_]/g, function (m0) { return m0 == '-' ? '+' : '/'; })); };
+    /**
+     * converts a Base64 string to a UTF-8 string.
+     * @param {String} src Base64 string.  Both normal and URL-safe are supported
+     * @returns {string} UTF-8 string
+     */
+    var decode = function (src) { return _decode(_unURI(src)); };
+    /**
+     * check if a value is a valid Base64 string
+     * @param {String} src a value to check
+      */
+    var isValid = function (src) {
+        if (typeof src !== 'string')
+            return false;
+        var s = src.replace(/\s+/g, '').replace(/={0,2}$/, '');
+        return !/[^\s0-9a-zA-Z\+/]/.test(s) || !/[^\s0-9a-zA-Z\-_]/.test(s);
+    };
+    //
+    var _noEnum = function (v) {
+        return {
+            value: v, enumerable: false, writable: true, configurable: true
+        };
+    };
+    /**
+     * extend String.prototype with relevant methods
+     */
+    var extendString = function () {
+        var _add = function (name, body) { return Object.defineProperty(String.prototype, name, _noEnum(body)); };
+        _add('fromBase64', function () { return decode(this); });
+        _add('toBase64', function (urlsafe) { return encode(this, urlsafe); });
+        _add('toBase64URI', function () { return encode(this, true); });
+        _add('toBase64URL', function () { return encode(this, true); });
+        _add('toUint8Array', function () { return toUint8Array(this); });
+    };
+    /**
+     * extend Uint8Array.prototype with relevant methods
+     */
+    var extendUint8Array = function () {
+        var _add = function (name, body) { return Object.defineProperty(Uint8Array.prototype, name, _noEnum(body)); };
+        _add('toBase64', function (urlsafe) { return fromUint8Array(this, urlsafe); });
+        _add('toBase64URI', function () { return fromUint8Array(this, true); });
+        _add('toBase64URL', function () { return fromUint8Array(this, true); });
+    };
+    /**
+     * extend Builtin prototypes with relevant methods
+     */
+    var extendBuiltins = function () {
+        extendString();
+        extendUint8Array();
+    };
+    var gBase64 = {
+        version: version,
+        VERSION: VERSION,
+        atob: _atob,
+        atobPolyfill: atobPolyfill,
+        btoa: _btoa,
+        btoaPolyfill: btoaPolyfill,
+        fromBase64: decode,
+        toBase64: encode,
+        encode: encode,
+        encodeURI: encodeURI,
+        encodeURL: encodeURI,
+        utob: utob,
+        btou: btou,
+        decode: decode,
+        isValid: isValid,
+        fromUint8Array: fromUint8Array,
+        toUint8Array: toUint8Array,
+        extendString: extendString,
+        extendUint8Array: extendUint8Array,
+        extendBuiltins: extendBuiltins
+    };
+    //
+    // export Base64 to the namespace
+    //
+    // ES5 is yet to have Object.assign() that may make transpilers unhappy.
+    // gBase64.Base64 = Object.assign({}, gBase64);
+    gBase64.Base64 = {};
+    Object.keys(gBase64).forEach(function (k) { return gBase64.Base64[k] = gBase64[k]; });
+    return gBase64;
+}));
+
+
+/***/ }),
+
 /***/ "./node_modules/queue-microtask/index.js":
 /*!***********************************************!*\
   !*** ./node_modules/queue-microtask/index.js ***!
@@ -37684,337 +38257,6 @@ function config (name) {
 
 /* (ignored) */
 
-/***/ }),
-
-/***/ "./node_modules/js-base64/base64.mjs":
-/*!*******************************************!*\
-  !*** ./node_modules/js-base64/base64.mjs ***!
-  \*******************************************/
-/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "version": () => (/* binding */ version),
-/* harmony export */   "VERSION": () => (/* binding */ VERSION),
-/* harmony export */   "atob": () => (/* binding */ _atob),
-/* harmony export */   "atobPolyfill": () => (/* binding */ atobPolyfill),
-/* harmony export */   "btoa": () => (/* binding */ _btoa),
-/* harmony export */   "btoaPolyfill": () => (/* binding */ btoaPolyfill),
-/* harmony export */   "fromBase64": () => (/* binding */ decode),
-/* harmony export */   "toBase64": () => (/* binding */ encode),
-/* harmony export */   "utob": () => (/* binding */ utob),
-/* harmony export */   "encode": () => (/* binding */ encode),
-/* harmony export */   "encodeURI": () => (/* binding */ encodeURI),
-/* harmony export */   "encodeURL": () => (/* binding */ encodeURI),
-/* harmony export */   "btou": () => (/* binding */ btou),
-/* harmony export */   "decode": () => (/* binding */ decode),
-/* harmony export */   "isValid": () => (/* binding */ isValid),
-/* harmony export */   "fromUint8Array": () => (/* binding */ fromUint8Array),
-/* harmony export */   "toUint8Array": () => (/* binding */ toUint8Array),
-/* harmony export */   "extendString": () => (/* binding */ extendString),
-/* harmony export */   "extendUint8Array": () => (/* binding */ extendUint8Array),
-/* harmony export */   "extendBuiltins": () => (/* binding */ extendBuiltins),
-/* harmony export */   "Base64": () => (/* binding */ gBase64)
-/* harmony export */ });
-/**
- *  base64.ts
- *
- *  Licensed under the BSD 3-Clause License.
- *    http://opensource.org/licenses/BSD-3-Clause
- *
- *  References:
- *    http://en.wikipedia.org/wiki/Base64
- *
- * @author Dan Kogai (https://github.com/dankogai)
- */
-const version = '3.7.2';
-/**
- * @deprecated use lowercase `version`.
- */
-const VERSION = version;
-const _hasatob = typeof atob === 'function';
-const _hasbtoa = typeof btoa === 'function';
-const _hasBuffer = typeof Buffer === 'function';
-const _TD = typeof TextDecoder === 'function' ? new TextDecoder() : undefined;
-const _TE = typeof TextEncoder === 'function' ? new TextEncoder() : undefined;
-const b64ch = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-const b64chs = Array.prototype.slice.call(b64ch);
-const b64tab = ((a) => {
-    let tab = {};
-    a.forEach((c, i) => tab[c] = i);
-    return tab;
-})(b64chs);
-const b64re = /^(?:[A-Za-z\d+\/]{4})*?(?:[A-Za-z\d+\/]{2}(?:==)?|[A-Za-z\d+\/]{3}=?)?$/;
-const _fromCC = String.fromCharCode.bind(String);
-const _U8Afrom = typeof Uint8Array.from === 'function'
-    ? Uint8Array.from.bind(Uint8Array)
-    : (it, fn = (x) => x) => new Uint8Array(Array.prototype.slice.call(it, 0).map(fn));
-const _mkUriSafe = (src) => src
-    .replace(/=/g, '').replace(/[+\/]/g, (m0) => m0 == '+' ? '-' : '_');
-const _tidyB64 = (s) => s.replace(/[^A-Za-z0-9\+\/]/g, '');
-/**
- * polyfill version of `btoa`
- */
-const btoaPolyfill = (bin) => {
-    // console.log('polyfilled');
-    let u32, c0, c1, c2, asc = '';
-    const pad = bin.length % 3;
-    for (let i = 0; i < bin.length;) {
-        if ((c0 = bin.charCodeAt(i++)) > 255 ||
-            (c1 = bin.charCodeAt(i++)) > 255 ||
-            (c2 = bin.charCodeAt(i++)) > 255)
-            throw new TypeError('invalid character found');
-        u32 = (c0 << 16) | (c1 << 8) | c2;
-        asc += b64chs[u32 >> 18 & 63]
-            + b64chs[u32 >> 12 & 63]
-            + b64chs[u32 >> 6 & 63]
-            + b64chs[u32 & 63];
-    }
-    return pad ? asc.slice(0, pad - 3) + "===".substring(pad) : asc;
-};
-/**
- * does what `window.btoa` of web browsers do.
- * @param {String} bin binary string
- * @returns {string} Base64-encoded string
- */
-const _btoa = _hasbtoa ? (bin) => btoa(bin)
-    : _hasBuffer ? (bin) => Buffer.from(bin, 'binary').toString('base64')
-        : btoaPolyfill;
-const _fromUint8Array = _hasBuffer
-    ? (u8a) => Buffer.from(u8a).toString('base64')
-    : (u8a) => {
-        // cf. https://stackoverflow.com/questions/12710001/how-to-convert-uint8-array-to-base64-encoded-string/12713326#12713326
-        const maxargs = 0x1000;
-        let strs = [];
-        for (let i = 0, l = u8a.length; i < l; i += maxargs) {
-            strs.push(_fromCC.apply(null, u8a.subarray(i, i + maxargs)));
-        }
-        return _btoa(strs.join(''));
-    };
-/**
- * converts a Uint8Array to a Base64 string.
- * @param {boolean} [urlsafe] URL-and-filename-safe a la RFC4648 §5
- * @returns {string} Base64 string
- */
-const fromUint8Array = (u8a, urlsafe = false) => urlsafe ? _mkUriSafe(_fromUint8Array(u8a)) : _fromUint8Array(u8a);
-// This trick is found broken https://github.com/dankogai/js-base64/issues/130
-// const utob = (src: string) => unescape(encodeURIComponent(src));
-// reverting good old fationed regexp
-const cb_utob = (c) => {
-    if (c.length < 2) {
-        var cc = c.charCodeAt(0);
-        return cc < 0x80 ? c
-            : cc < 0x800 ? (_fromCC(0xc0 | (cc >>> 6))
-                + _fromCC(0x80 | (cc & 0x3f)))
-                : (_fromCC(0xe0 | ((cc >>> 12) & 0x0f))
-                    + _fromCC(0x80 | ((cc >>> 6) & 0x3f))
-                    + _fromCC(0x80 | (cc & 0x3f)));
-    }
-    else {
-        var cc = 0x10000
-            + (c.charCodeAt(0) - 0xD800) * 0x400
-            + (c.charCodeAt(1) - 0xDC00);
-        return (_fromCC(0xf0 | ((cc >>> 18) & 0x07))
-            + _fromCC(0x80 | ((cc >>> 12) & 0x3f))
-            + _fromCC(0x80 | ((cc >>> 6) & 0x3f))
-            + _fromCC(0x80 | (cc & 0x3f)));
-    }
-};
-const re_utob = /[\uD800-\uDBFF][\uDC00-\uDFFFF]|[^\x00-\x7F]/g;
-/**
- * @deprecated should have been internal use only.
- * @param {string} src UTF-8 string
- * @returns {string} UTF-16 string
- */
-const utob = (u) => u.replace(re_utob, cb_utob);
-//
-const _encode = _hasBuffer
-    ? (s) => Buffer.from(s, 'utf8').toString('base64')
-    : _TE
-        ? (s) => _fromUint8Array(_TE.encode(s))
-        : (s) => _btoa(utob(s));
-/**
- * converts a UTF-8-encoded string to a Base64 string.
- * @param {boolean} [urlsafe] if `true` make the result URL-safe
- * @returns {string} Base64 string
- */
-const encode = (src, urlsafe = false) => urlsafe
-    ? _mkUriSafe(_encode(src))
-    : _encode(src);
-/**
- * converts a UTF-8-encoded string to URL-safe Base64 RFC4648 §5.
- * @returns {string} Base64 string
- */
-const encodeURI = (src) => encode(src, true);
-// This trick is found broken https://github.com/dankogai/js-base64/issues/130
-// const btou = (src: string) => decodeURIComponent(escape(src));
-// reverting good old fationed regexp
-const re_btou = /[\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-\xBF]{3}/g;
-const cb_btou = (cccc) => {
-    switch (cccc.length) {
-        case 4:
-            var cp = ((0x07 & cccc.charCodeAt(0)) << 18)
-                | ((0x3f & cccc.charCodeAt(1)) << 12)
-                | ((0x3f & cccc.charCodeAt(2)) << 6)
-                | (0x3f & cccc.charCodeAt(3)), offset = cp - 0x10000;
-            return (_fromCC((offset >>> 10) + 0xD800)
-                + _fromCC((offset & 0x3FF) + 0xDC00));
-        case 3:
-            return _fromCC(((0x0f & cccc.charCodeAt(0)) << 12)
-                | ((0x3f & cccc.charCodeAt(1)) << 6)
-                | (0x3f & cccc.charCodeAt(2)));
-        default:
-            return _fromCC(((0x1f & cccc.charCodeAt(0)) << 6)
-                | (0x3f & cccc.charCodeAt(1)));
-    }
-};
-/**
- * @deprecated should have been internal use only.
- * @param {string} src UTF-16 string
- * @returns {string} UTF-8 string
- */
-const btou = (b) => b.replace(re_btou, cb_btou);
-/**
- * polyfill version of `atob`
- */
-const atobPolyfill = (asc) => {
-    // console.log('polyfilled');
-    asc = asc.replace(/\s+/g, '');
-    if (!b64re.test(asc))
-        throw new TypeError('malformed base64.');
-    asc += '=='.slice(2 - (asc.length & 3));
-    let u24, bin = '', r1, r2;
-    for (let i = 0; i < asc.length;) {
-        u24 = b64tab[asc.charAt(i++)] << 18
-            | b64tab[asc.charAt(i++)] << 12
-            | (r1 = b64tab[asc.charAt(i++)]) << 6
-            | (r2 = b64tab[asc.charAt(i++)]);
-        bin += r1 === 64 ? _fromCC(u24 >> 16 & 255)
-            : r2 === 64 ? _fromCC(u24 >> 16 & 255, u24 >> 8 & 255)
-                : _fromCC(u24 >> 16 & 255, u24 >> 8 & 255, u24 & 255);
-    }
-    return bin;
-};
-/**
- * does what `window.atob` of web browsers do.
- * @param {String} asc Base64-encoded string
- * @returns {string} binary string
- */
-const _atob = _hasatob ? (asc) => atob(_tidyB64(asc))
-    : _hasBuffer ? (asc) => Buffer.from(asc, 'base64').toString('binary')
-        : atobPolyfill;
-//
-const _toUint8Array = _hasBuffer
-    ? (a) => _U8Afrom(Buffer.from(a, 'base64'))
-    : (a) => _U8Afrom(_atob(a), c => c.charCodeAt(0));
-/**
- * converts a Base64 string to a Uint8Array.
- */
-const toUint8Array = (a) => _toUint8Array(_unURI(a));
-//
-const _decode = _hasBuffer
-    ? (a) => Buffer.from(a, 'base64').toString('utf8')
-    : _TD
-        ? (a) => _TD.decode(_toUint8Array(a))
-        : (a) => btou(_atob(a));
-const _unURI = (a) => _tidyB64(a.replace(/[-_]/g, (m0) => m0 == '-' ? '+' : '/'));
-/**
- * converts a Base64 string to a UTF-8 string.
- * @param {String} src Base64 string.  Both normal and URL-safe are supported
- * @returns {string} UTF-8 string
- */
-const decode = (src) => _decode(_unURI(src));
-/**
- * check if a value is a valid Base64 string
- * @param {String} src a value to check
-  */
-const isValid = (src) => {
-    if (typeof src !== 'string')
-        return false;
-    const s = src.replace(/\s+/g, '').replace(/={0,2}$/, '');
-    return !/[^\s0-9a-zA-Z\+/]/.test(s) || !/[^\s0-9a-zA-Z\-_]/.test(s);
-};
-//
-const _noEnum = (v) => {
-    return {
-        value: v, enumerable: false, writable: true, configurable: true
-    };
-};
-/**
- * extend String.prototype with relevant methods
- */
-const extendString = function () {
-    const _add = (name, body) => Object.defineProperty(String.prototype, name, _noEnum(body));
-    _add('fromBase64', function () { return decode(this); });
-    _add('toBase64', function (urlsafe) { return encode(this, urlsafe); });
-    _add('toBase64URI', function () { return encode(this, true); });
-    _add('toBase64URL', function () { return encode(this, true); });
-    _add('toUint8Array', function () { return toUint8Array(this); });
-};
-/**
- * extend Uint8Array.prototype with relevant methods
- */
-const extendUint8Array = function () {
-    const _add = (name, body) => Object.defineProperty(Uint8Array.prototype, name, _noEnum(body));
-    _add('toBase64', function (urlsafe) { return fromUint8Array(this, urlsafe); });
-    _add('toBase64URI', function () { return fromUint8Array(this, true); });
-    _add('toBase64URL', function () { return fromUint8Array(this, true); });
-};
-/**
- * extend Builtin prototypes with relevant methods
- */
-const extendBuiltins = () => {
-    extendString();
-    extendUint8Array();
-};
-const gBase64 = {
-    version: version,
-    VERSION: VERSION,
-    atob: _atob,
-    atobPolyfill: atobPolyfill,
-    btoa: _btoa,
-    btoaPolyfill: btoaPolyfill,
-    fromBase64: decode,
-    toBase64: encode,
-    encode: encode,
-    encodeURI: encodeURI,
-    encodeURL: encodeURI,
-    utob: utob,
-    btou: btou,
-    decode: decode,
-    isValid: isValid,
-    fromUint8Array: fromUint8Array,
-    toUint8Array: toUint8Array,
-    extendString: extendString,
-    extendUint8Array: extendUint8Array,
-    extendBuiltins: extendBuiltins,
-};
-// makecjs:CUT //
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// and finally,
-
-
-
 /***/ })
 
 /******/ 	});
@@ -38049,30 +38291,6 @@ const gBase64 = {
 /******/ 		__webpack_require__.amdO = {};
 /******/ 	})();
 /******/ 	
-/******/ 	/* webpack/runtime/compat get default export */
-/******/ 	(() => {
-/******/ 		// getDefaultExport function for compatibility with non-harmony modules
-/******/ 		__webpack_require__.n = (module) => {
-/******/ 			var getter = module && module.__esModule ?
-/******/ 				() => (module['default']) :
-/******/ 				() => (module);
-/******/ 			__webpack_require__.d(getter, { a: getter });
-/******/ 			return getter;
-/******/ 		};
-/******/ 	})();
-/******/ 	
-/******/ 	/* webpack/runtime/define property getters */
-/******/ 	(() => {
-/******/ 		// define getter functions for harmony exports
-/******/ 		__webpack_require__.d = (exports, definition) => {
-/******/ 			for(var key in definition) {
-/******/ 				if(__webpack_require__.o(definition, key) && !__webpack_require__.o(exports, key)) {
-/******/ 					Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
-/******/ 				}
-/******/ 			}
-/******/ 		};
-/******/ 	})();
-/******/ 	
 /******/ 	/* webpack/runtime/global */
 /******/ 	(() => {
 /******/ 		__webpack_require__.g = (function() {
@@ -38085,89 +38303,14 @@ const gBase64 = {
 /******/ 		})();
 /******/ 	})();
 /******/ 	
-/******/ 	/* webpack/runtime/hasOwnProperty shorthand */
-/******/ 	(() => {
-/******/ 		__webpack_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
-/******/ 	})();
-/******/ 	
-/******/ 	/* webpack/runtime/make namespace object */
-/******/ 	(() => {
-/******/ 		// define __esModule on exports
-/******/ 		__webpack_require__.r = (exports) => {
-/******/ 			if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
-/******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
-/******/ 			}
-/******/ 			Object.defineProperty(exports, '__esModule', { value: true });
-/******/ 		};
-/******/ 	})();
-/******/ 	
 /************************************************************************/
-var __webpack_exports__ = {};
-// This entry need to be wrapped in an IIFE because it need to be in strict mode.
-(() => {
-"use strict";
-/*!**********************!*\
-  !*** ./src/index.js ***!
-  \**********************/
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
-/* harmony export */ });
-/* harmony import */ var hls_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! hls.js */ "./node_modules/hls.js/dist/hls.js");
-/* harmony import */ var hls_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(hls_js__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var _p2p_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./p2p.js */ "./src/p2p.js");
-// 文档地址
-// https://hls-js.netlify.app/api-docs
-console.log("start...");
-
-
-let recommendedHlsjsConfig = {
-  maxBufferSize: 0,
-  maxBufferLength: 30,
-  liveSyncDuration: 30,
-  fragLoadingTimeOut: 4000 // used by fragment-loader
-
-};
-
-class P2PHlsjs extends (hls_js__WEBPACK_IMPORTED_MODULE_0___default()) {
-  static get P2PEvents() {
-    console.log("p2p:", P2PEngine.Events);
-    return P2PEngine.Events;
-  }
-
-  static get uaParserResult() {
-    return P2PEngine.uaParserResult;
-  }
-
-  constructor(config = {}) {
-    console.log("p2p constructor:", config);
-    let p2pConfig = config.p2pConfig || {};
-    delete config.p2pConfig;
-    let mergedHlsjsConfig = Object.assign({}, recommendedHlsjsConfig, config); //test
-
-    mergedHlsjsConfig.debug = false;
-    super(mergedHlsjsConfig);
-
-    if (_p2p_js__WEBPACK_IMPORTED_MODULE_1__["default"].WEBRTC_SUPPORT) {
-      this.engine = new _p2p_js__WEBPACK_IMPORTED_MODULE_1__["default"](this, p2pConfig);
-    }
-  }
-
-  enableP2P() {
-    this.engine.enableP2P();
-  }
-
-  disableP2P() {
-    this.engine.disableP2P();
-  }
-
-}
-
-P2PHlsjs.engineVersion = _p2p_js__WEBPACK_IMPORTED_MODULE_1__["default"].version;
-/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (P2PHlsjs);
-})();
-
-__webpack_exports__ = __webpack_exports__["default"];
+/******/ 	
+/******/ 	// startup
+/******/ 	// Load entry module and return exports
+/******/ 	// This entry module is referenced by other modules so it can't be inlined
+/******/ 	var __webpack_exports__ = __webpack_require__("./src/index.js");
+/******/ 	__webpack_exports__ = __webpack_exports__["default"];
+/******/ 	
 /******/ 	return __webpack_exports__;
 /******/ })()
 ;
