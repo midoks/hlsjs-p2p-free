@@ -31,37 +31,41 @@ class Fetcher extends EventEmitter {
 		console.log("browserInfo:",browserInfo);
 		console.log("announce:",announce);
 
-		var simPeer = new SimplePeer({ 
-			initiator: false,
-			// sdpTransform: function (sdp) {
-			// 	console.log(sdp);
-			// 	return sdp;
-			// }, 
-		});
 
-		// peer.once('_iceComplete', function() {
-		// 	console.log('_iceComplete');
-		// });
 
-		simPeer.on('signal', data=>{
-			console.log('signal',data);
-		});
 
-		simPeer.on('stream', stream => {
-		    console.log("stream:",stream)
-		})
 
-		// simPeer.on('data', data => {
-		//   console.log('got a chunk', data);
-		// })
+			var simPeer = new SimplePeer({ 
+				initiator: false,
+				// sdpTransform: function (sdp) {
+				// 	console.log(sdp);
+				// 	return sdp;
+				// }, 
+			});
 
-		console.log('Fetcher3',engine.config.wsSignalerAddr);
-		// var wsUrl = p2p.config.wsSignalerAddr + "?id=" + peer
-		// const rws = new ReconnectingWebSocket(wsUrl);
-		// rws.addEventListener('open', () => {
-		// 	console.log("websocket init");
-		//     rws.send('{"action":"get_stat"}');
-		// });
+			// peer.once('_iceComplete', function() {
+			// 	console.log('_iceComplete');
+			// });
+
+			simPeer.on('signal', data=>{
+				console.log('signal',data);
+			});
+
+			simPeer.on('stream', stream => {
+			    console.log("stream:",stream)
+			})
+
+			// simPeer.on('data', data => {
+			//   console.log('got a chunk', data);
+			// })
+
+			console.log('Fetcher3',engine.config.wsSignalerAddr);
+			// var wsUrl = p2p.config.wsSignalerAddr + "?id=" + peer
+			// const rws = new ReconnectingWebSocket(wsUrl);
+			// rws.addEventListener('open', () => {
+			// 	console.log("websocket init");
+			//     rws.send('{"action":"get_stat"}');
+			// });
 
 	}
 
