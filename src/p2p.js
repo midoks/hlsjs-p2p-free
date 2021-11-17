@@ -6,7 +6,7 @@ import UAParser from 'ua-parser-js';
 import Logger from './utils/logger';
 import defaultP2PConfig from './config';
 import {Fetcher,getBrowserRTC} from './core';
-// import Tracker from './bt';
+import Tracker from './bt';
 
 
 const uaParserResult = (new UAParser()).getResult();
@@ -36,6 +36,11 @@ class p2p extends EventEmitter {
             let logger = new Logger(this.config, channel);
             this.hlsjs.config.logger = this.logger = logger;
 
+            // try{
+            //     this._init(channel);
+            // }catch(e){
+            //     console.log(e);
+            // }
             this._init(channel);
             hlsjs.off(hlsjs.constructor.Events.LEVEL_LOADED, onLevelLoaded);
         };
@@ -75,8 +80,8 @@ class p2p extends EventEmitter {
 
         this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_LOADING, (id, data) => {
             // console.log('FRAG_LOADING: ' + JSON.stringify(data.frag));
-            console.log('FRAG_LOADING: ',data.frag);
-            logger.debug('FRAG_LOADING: ' + data.frag.sn);
+            // console.log('FRAG_LOADING: ',data.frag);
+            // logger.debug('FRAG_LOADING: ' + data.frag.sn);
             // this.signaler.currentLoadingSN = data.frag.sn;
 
         });

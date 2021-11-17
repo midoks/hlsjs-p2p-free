@@ -2,7 +2,6 @@
 import EventEmitter from 'events';
 import ReconnectingWebSocket from 'reconnecting-websocket';
 import { Base64 } from 'js-base64';
-import SimplePeer from 'simple-peer';
 
 import { getBrowserRTC } from './index';
 
@@ -26,64 +25,25 @@ class Fetcher extends EventEmitter {
 		this.announce = announce;
 		this.browserInfo = browserInfo;
 
+		this.channelVal = urlBase64(this.engine.hlsjs.url)
 
-		console.log("channel:", engine);
-		console.log("browserInfo:",browserInfo);
-		console.log("announce:",announce);
-
-
-
-
-			var simPeer = new SimplePeer({ 
-				initiator: false,
-				// sdpTransform: function (sdp) {
-				// 	console.log(sdp);
-				// 	return sdp;
-				// }, 
-			});
-
-			// peer.once('_iceComplete', function() {
-			// 	console.log('_iceComplete');
-			// });
-
-			simPeer.on('signal', data=>{
-				console.log('signal',data);
-			});
-
-			simPeer.on('stream', stream => {
-			    console.log("stream:",stream)
-			})
-
-
-			// simPeer.on('data', data => {
-			//   console.log('got a chunk', data);
-			// })
-
-			console.log('Fetcher3',engine.config.wsSignalerAddr);
-			// var wsUrl = p2p.config.wsSignalerAddr + "?id=" + peer
-			// const rws = new ReconnectingWebSocket(wsUrl);
-			// rws.addEventListener('open', () => {
-			// 	console.log("websocket init");
-			//     rws.send('{"action":"get_stat"}');
-			// });
-
+		this.announceURL = this.announce + '/channel';
+		this.heartbeatURL = this.announceURL+'/'+this.channelVal+"/node/"
 	}
 
 	btAnnounce(){
-		var announceURL = this.announce + '/channel';
-		var urlChannel = urlBase64(this.engine.hlsjs.url)
 		var postJson = {
-			"channel": urlChannel,
+			"channel": this.channelVal,
 		}
 		var _this = this, logger = this.engine.logger;
 		return new Promise(function(resolve, reject) {
-			fetch(announceURL, {
+			fetch(_this.announceURL, {
 				method: "POST",
 				body: JSON.stringify(postJson)
 			}).then(function(e) {
 				return e.json()
 			}).then(function(t) {
-				this.peerId = t.peer_id;
+				_this.peerId = t.data.id;
 				resolve(t);
 			}).catch(function(e) {
 				logger.error("[fetcher] btAnnounce error " + e);
@@ -92,18 +52,19 @@ class Fetcher extends EventEmitter {
 		})
 	} 
 
-	static channelStats(heartbeat,url){
-		setTimeout(function(){
-			Ajax("JSON",true).post(url ,'{}', function(data){
-				// console.log("channel[stats]:",data);
-			});
-
-			Fetcher.channelStats(heartbeat,url);
-		},heartbeat);
-	}
-
-	channelPeers(){
-		console.log("channelPeers");
+	btHeartbeat(report_interval){
+		var _this = this;
+		var logger = this.engine.logger;
+		this.heartbeater = window.setInterval(function() {
+			fetch(_this.heartbeatURL+_this.peerId+"/stats",{
+				method: "POST",
+			}).then(function(e) {
+			}).catch(function(e) {
+				window.clearInterval(_this.heartbeater);
+				logger.error("[fetcher] btHeartbeat error " + e);
+			})
+		},
+		1e3 * report_interval)
 	}
 
 }

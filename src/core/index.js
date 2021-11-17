@@ -1,5 +1,7 @@
 import Fetcher from './fetcher';
 import SignalWs from './signal-ws';
+import DataChannel from './datachannel';
+import Events from './events';
 
 
 
@@ -19,5 +21,6 @@ function getBrowserRTC () {
 }
 
 
-export { Fetcher, SignalWs, getBrowserRTC };
+
+export { Fetcher, SignalWs, getBrowserRTC, DataChannel,Events };
 
