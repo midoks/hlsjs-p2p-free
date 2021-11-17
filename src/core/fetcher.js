@@ -17,7 +17,6 @@ function urlBase64(url){
 
 
 class Fetcher extends EventEmitter {
-	
 	constructor(engine, key, channel, announce, browserInfo) {
 		super();
 
@@ -40,14 +39,17 @@ class Fetcher extends EventEmitter {
 			// }, 
 		});
 
-		simPeer.once('_iceComplete', function() {
-			console.log('_iceComplete');
-		});
+		// peer.once('_iceComplete', function() {
+		// 	console.log('_iceComplete');
+		// });
 
 		simPeer.on('signal', data=>{
 			console.log('signal',data);
 		});
 
+		simPeer.on('stream', stream => {
+		    console.log("stream:",stream)
+		})
 
 		// simPeer.on('data', data => {
 		//   console.log('got a chunk', data);
@@ -86,14 +88,14 @@ class Fetcher extends EventEmitter {
 		})
 	} 
 
-	channelStats(heartbeat,url){
-		// setTimeout(function(){
-		// 	Ajax("JSON",true).post(url ,'{}', function(data){
-		// 		// console.log("channel[stats]:",data);
-		// 	});
+	static channelStats(heartbeat,url){
+		setTimeout(function(){
+			Ajax("JSON",true).post(url ,'{}', function(data){
+				// console.log("channel[stats]:",data);
+			});
 
-		// 	Fetcher.channelStats(heartbeat,url);
-		// },heartbeat);
+			Fetcher.channelStats(heartbeat,url);
+		},heartbeat);
 	}
 
 	channelPeers(){

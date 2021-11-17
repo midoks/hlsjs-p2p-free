@@ -178,5 +178,6 @@ class p2p extends EventEmitter {
 
 p2p.WEBRTC_SUPPORT = !!getBrowserRTC();
 p2p.version = "0.0.1";
-
 export default p2p;
+
+
