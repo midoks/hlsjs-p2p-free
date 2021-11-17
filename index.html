@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>DEMO</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DEMO</title>
 
-	<link rel="stylesheet" type="text/css" href="node_modules/dplayer/dist/DPlayer.min.css" />
+    <link rel="stylesheet" type="text/css" href="node_modules/dplayer/dist/DPlayer.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" type="text/javascript"></script>
 
-	<script src="node_modules/dplayer/dist/DPlayer.min.js" type="text/javascript"></script>
-	<!-- <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script> -->
+    <script src="node_modules/dplayer/dist/DPlayer.min.js" type="text/javascript"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script> -->
 </head>
 <body>
 <script id="debug"></script>
@@ -27,7 +27,7 @@ $('#debug').on('load', function(){
             type: 'customHls',
             customType: {
                 'customHls': function (video, player) {
-                    const hls = new Hls({
+                    const ss = new Hls({
                         debug: false,
                         // Other hlsjsConfig options provided by hls.js
                         p2pConfig: {
@@ -41,8 +41,8 @@ $('#debug').on('load', function(){
                             // Other p2pConfig options provided by CDNBye http://www.cdnbye.com/en/
                         }
                     });
-                    hls.loadSource(video.src);
-                    hls.attachMedia(video);
+                    ss.loadSource(video.src);
+                    ss.attachMedia(video);
                 }
             }
         },

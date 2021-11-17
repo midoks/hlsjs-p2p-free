@@ -1,11 +1,10 @@
 title: zzz
-frequency: 5
+frequency: 3
 dirfilter:
+- tmp
 - node_modules
-- .git
-- dist
 ext:
-- ts
+- go
 - js
 enablerun: false
 action:

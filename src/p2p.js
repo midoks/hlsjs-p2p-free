@@ -6,7 +6,7 @@ import UAParser from 'ua-parser-js';
 import Logger from './utils/logger';
 import defaultP2PConfig from './config';
 import {Fetcher,getBrowserRTC} from './core';
-import Tracker from './bt';
+// import Tracker from './bt';
 
 
 const uaParserResult = (new UAParser()).getResult();

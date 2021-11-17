@@ -5,7 +5,7 @@ console.log("start...");
 
 
 import Hlsjs from 'hls.js';
-import p2p from './p2p.js';
+import p2p from './p2p';
 
 let recommendedHlsjsConfig = {
     maxBufferSize: 0,
@@ -17,7 +17,7 @@ let recommendedHlsjsConfig = {
 class P2PHlsjs extends Hlsjs {
 
     static get P2PEvents() {
-    	console.log("p2p:",P2PEngine.Events);
+        console.log("p2p:",P2PEngine.Events);
         return P2PEngine.Events;
     }
 
@@ -27,7 +27,7 @@ class P2PHlsjs extends Hlsjs {
 
     constructor(config = {}) {
 
-    	console.log("p2p constructor:",config);
+        console.log("p2p constructor:",config);
 
         let p2pConfig = config.p2pConfig || {};
         delete config.p2pConfig;
