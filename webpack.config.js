@@ -33,8 +33,7 @@ function getConstantsForConfig(type) {
 function getAliasesForLightDist() {
     let aliases = {};
 
-    aliases = Object.assign({}, aliases, {
-    });
+    aliases = Object.assign({}, aliases, {});
     return aliases;
 }
 
@@ -124,8 +123,7 @@ module.exports = (envArgs) => {
 
     configs = multiConfig;
 
-    console.log(
-    `Building configs: ${configs.map((config) => config.name).join(', ')}.\n`
+    console.log(`Building configs: ${configs.map((config) => config.name).join(', ')}.\n`
     );
   return configs;
 };
