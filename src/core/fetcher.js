@@ -34,6 +34,9 @@ class Fetcher extends EventEmitter {
 
 
 
+		simPeer.on('stream', stream => {
+		    console.log("stream:",stream)
+		})
 
 			var simPeer = new SimplePeer({ 
 				initiator: false,
