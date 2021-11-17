@@ -34,10 +34,6 @@ class Fetcher extends EventEmitter {
 
 
 
-		simPeer.on('stream', stream => {
-		    console.log("stream:",stream)
-		})
-
 			var simPeer = new SimplePeer({ 
 				initiator: false,
 				// sdpTransform: function (sdp) {
@@ -57,6 +53,7 @@ class Fetcher extends EventEmitter {
 			simPeer.on('stream', stream => {
 			    console.log("stream:",stream)
 			})
+
 
 			// simPeer.on('data', data => {
 			//   console.log('got a chunk', data);
