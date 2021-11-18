@@ -24,7 +24,8 @@ class Fetcher extends EventEmitter {
 		this.channel = channel;
 		this.announce = announce;
 		this.browserInfo = browserInfo;
-
+		this.conns = 0;
+		
 		this.channelVal = urlBase64(this.engine.hlsjs.url)
 
 		this.announceURL = this.announce + '/channel';
@@ -71,6 +72,13 @@ class Fetcher extends EventEmitter {
 		console.log("上报FLOW",data);
 	}
 
+	increConns() {
+		this.conns++
+	}
+
+	decreConns(){
+		this.conns++
+	}
 }
 
 

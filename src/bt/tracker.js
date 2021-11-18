@@ -50,23 +50,36 @@ class Tracker extends EventEmitter {
     }
 
     _setupDC(datachannel) {
+        var _this = this;
         const { logger } = this.engine;
         datachannel.on(Events.DC_SIGNAL, data => {
             const remotePeerId = datachannel.remotePeerId;
             console.log("remotePeerId:",remotePeerId);
-            this.signalerWs.sendSignal(remotePeerId, data);
+            _this.signalerWs.sendSignal(remotePeerId, data);
             //启动定时器，如果指定时间对方没有响应则连接下一个
-            if (!this.signalTimer && !this.failedDCSet.has(remotePeerId)) {
-                this.signalTimer = window.setTimeout(() => {
-                    this.DCMap.delete(remotePeerId);
+            if (!_this.signalTimer && !_this.failedDCSet.has(remotePeerId)) {
+                _this.signalTimer = window.setTimeout(() => {
+                    _this.DCMap.delete(remotePeerId);
                     //记录失败的连接
-                    this.failedDCSet.add(remotePeerId);              
+                    _this.failedDCSet.add(remotePeerId);              
                     logger.warn(`signaling ${remotePeerId} timeout`);
-                    this.signalTimer = null;
-                    this._tryConnectToPeer();
+                    _this.signalTimer = null;
+                    _this._tryConnectToPeer();
                 }, 10000);
             }
-        });
+        }).once(Events.DC_OPEN, () => {
+            console.log("连接成功!!! - Events.DC_OPEN");
+
+            _this.scheduler.handshakePeer(datachannel);
+
+            //如果dc数量不够则继续尝试连接
+            if (_this.DCMap.size < _this.config.neighbours) {
+                _this._tryConnectToPeer();
+            }
+
+            //更新conns
+            _this.fetcher.increConns();
+        })
     }
 
     _initSignalerWs() {

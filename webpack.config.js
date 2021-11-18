@@ -1,6 +1,40 @@
 const pkgJson = require('./package.json');
 const path = require('path');
+const webpack = require('webpack');
 
+//嵌入全局变量
+function getConstantsForConfig(type) {
+    return {
+        __VERSION__: JSON.stringify(pkgJson.version),
+    };
+}
+
+
+
+function getPluginsForConfig(minify = false, type) {
+    // common plugins.
+    const plugins = [
+        // new webpack.optimize.OccurrenceOrderPlugin(),
+        new webpack.ProvidePlugin({
+          process: 'process/browser',
+        }),
+        new webpack.optimize.ModuleConcatenationPlugin(),
+        new webpack.DefinePlugin(getConstantsForConfig(type)),
+    ];
+
+    if (minify) {
+        // minification plugins.
+        return plugins.concat([
+            // new webpack.optimize.UglifyJsPlugin(uglifyJsOptions),
+            new webpack.LoaderOptionsPlugin({
+                minimize: true,
+                debug: true
+            })
+        ]);
+    }
+
+    return plugins;
+}
 
 const multiConfig = [
   {
@@ -17,6 +51,7 @@ const multiConfig = [
       libraryExport: 'default',
       globalObject: 'this',
     },
+    plugins: getPluginsForConfig(),
     devtool: 'source-map',
   }
 ];

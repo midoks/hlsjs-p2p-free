@@ -23,7 +23,7 @@ class Scheduler extends EventEmitter {
 
     updateLoadedSN(sn) {
     	console.log("scheduler updateLoadedSN peerMap:",this.peerMap);
-    	console.log("scheduler updateLoadedSN:", sn);
+    	// console.log("scheduler updateLoadedSN:", sn);
     	//在bitset中记录
         this.bitset.add(sn)
         if (this.bitCounts.has(sn)) {
@@ -101,8 +101,128 @@ class Scheduler extends EventEmitter {
         }
     }
 
+    addPeer(peer) {
+        const { logger } = this.engine;
+        console.log(`add peer ${peer.remotePeerId}`);
+        logger.info(`add peer ${peer.remotePeerId}`);
+        this.peerMap.set(peer.remotePeerId, peer);
+        this.engine.emit('peers', [...this.peerMap.keys()]);
+    }
+
+
     peersHasSN(sn) {
         return this.bitCounts.has(sn);
+    }
+
+    handshakePeer(dc) {
+        this._setupDC(dc);
+        dc.sendBitField(Array.from(this.bitset))            //向peer发送bitfield
+    }
+
+    _setupDC(dc){
+        const { logger } = this.engine;
+        dc.on(Events.DC_BITFIELD, msg => {
+            if (!msg.field) return;
+            let bitset = new Set(msg.field);
+            dc.bitset = bitset;
+
+            //防止重复下载
+            msg.field.forEach( value => {
+                if (!this.bitset.has(value)) {              
+                    this._increBitCounts(value);
+                }
+            });
+            //只有获取bitfield之后才加入peerMap
+            this.addPeer(dc);
+        })
+        .on(Events.DC_HAVE, msg => {
+            if (!msg.sn || !dc.bitset) return;
+            const sn = msg.sn;
+            dc.bitset.add(sn);
+            if (!this.bitset.has(sn)) {              //防止重复下载
+                this._increBitCounts(sn);
+            }
+        })
+        .on(Events.DC_LOST, msg => {
+            if (!msg.sn || !dc.bitset) return;
+            const sn = msg.sn;
+            dc.bitset.delete(sn);
+            this._decreBitCounts(sn);
+        })
+        .on(Events.DC_PIECE, msg => {                                                  //接收到piece事件，即二进制包头
+            if (this.criticalSeg && this.criticalSeg.relurl === msg.url) {             //接收到critical的响应
+                this.stats.tfirst = Math.max(performance.now(), this.stats.trequest);
+            }
+        })
+        .on(Events.DC_PIECE_NOT_FOUND, msg => {
+            if (this.criticalSeg && this.criticalSeg.relurl === msg.url) {              //接收到critical未找到的响应
+                window.clearTimeout(this.criticaltimeouter);                            //清除定时器
+                this.criticaltimeouter = null;
+                this._criticaltimeout();                                                //触发超时，由xhr下载
+            }
+        })
+        .on(Events.DC_RESPONSE, response => {                                            //接收到完整二进制数据
+            if (this.criticalSeg && this.criticalSeg.relurl === response.url && this.criticaltimeouter) {
+                logger.info(`receive criticalSeg url ${response.url}`);
+                window.clearTimeout(this.criticaltimeouter);                             //清除定时器
+                this.criticaltimeouter = null;
+                let stats = this.stats;
+                stats.tload = Math.max(stats.tfirst, performance.now());
+                stats.loaded = stats.total = response.data.byteLength;
+                this.criticalSeg = null;
+                this.callbacks.onSuccess(response, stats, this.context);
+            } else {
+                this.bufMgr.addBuffer(response.sn, response.url, response.data);
+            }
+            this.updateLoadedSN(response.sn);
+        })
+        .on(Events.DC_REQUEST, msg => {
+            let url = '';
+            //请求sn的request
+            if (!msg.url) {
+                url = this.bufMgr.getURLbySN(msg.sn);
+            } else {
+                //请求url的request                                
+                url = msg.url;
+            }
+            if (url && this.bufMgr.hasSegOfURL(url)) {
+                let seg = this.bufMgr.getSegByURL(url);
+                dc.sendBuffer(msg.sn, seg.relurl, seg.data);
+            } else {
+                dc.sendJson({
+                    event: Events.DC_PIECE_NOT_FOUND,
+                    url: url,
+                    sn: msg.sn
+                })
+            }
+        })
+        .on(Events.DC_TIMEOUT, () => {
+            logger.warn(`DC_TIMEOUT`);
+        })
+    }
+
+    _decreBitCounts(index) {
+        if (this.bitCounts.has(index)) {
+            let last = this.bitCounts.get(index);
+            // this.bitCounts.set(index, last-1);
+            // if (this.bitCounts.get(index) === 0) {
+            //     this.bitCounts.delete(index);
+            // }
+            if (last === 1) {
+                this.bitCounts.delete(index);
+            } else {
+                this.bitCounts.set(index, last-1);
+            }
+        }
+    }
+    
+    _increBitCounts(index) {
+        if (!this.bitCounts.has(index)) {
+            this.bitCounts.set(index, 1);
+        } else {
+            let last = this.bitCounts.get(index);
+            this.bitCounts.set(index, last+1);
+        }
     }
 
 }

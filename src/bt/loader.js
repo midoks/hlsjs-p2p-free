@@ -38,7 +38,7 @@ class FragLoader extends EventEmitter {
      首先从缓存中寻找请求的seg，如果缓存中找不到则用http请求。
      */
     load(context, config, callbacks) {
-        console.log("loader:",context, config, callbacks);
+        // console.log("loader:",context, config, callbacks);
         const { logger } = this;
         const frag = context.frag;
         //初始化flag
