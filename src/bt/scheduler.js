@@ -21,6 +21,19 @@ class Scheduler extends EventEmitter {
         this.bitCounts = new Map();
     }
 
+    set bufferManager(bm) {
+        this.bufMgr = bm;
+
+        bm.on(Events.BM_LOST, sn => {
+            //向peers广播已经不缓存的sn
+            this._broadcastToPeers({
+                event: Events.DC_LOST,
+                sn: sn
+            });
+            this.bitset.delete(sn);
+        })
+    }
+
     updateLoadedSN(sn) {
     	console.log("scheduler updateLoadedSN peerMap:",this.peerMap);
     	// console.log("scheduler updateLoadedSN:", sn);
@@ -114,9 +127,35 @@ class Scheduler extends EventEmitter {
         return this.bitCounts.has(sn);
     }
 
+    load(context, config, callbacks) {
+        const { logger } = this.engine;
+        this.context = context;
+        const frag = context.frag;
+        this.callbacks = callbacks;
+        this.stats = {trequest: performance.now(), retry: 0, tfirst: 0, tload: 0, loaded: 0};
+        this.criticalSeg = {sn: frag.sn, relurl: frag.relurl};
+
+        let target;
+        for (let peer of this.peerMap.values()) {
+            console.log("scheduler load",peer);
+            if (peer.bitset.has(frag.sn)) {
+                target = peer;
+            }
+        }
+
+        if (target) {
+            // target.requestDataBySN(frag.sn, true);
+            target.requestDataByURL(frag.relurl, true);                            //critical的根据url请求
+            logger.info(`request criticalSeg url ${frag.relurl} at ${frag.sn}`);
+        }
+        this.criticaltimeouter = window.setTimeout(this._criticaltimeout.bind(this), this.config.loadTimeout*1000);
+    }
+
     handshakePeer(dc) {
         this._setupDC(dc);
-        dc.sendBitField(Array.from(this.bitset))            //向peer发送bitfield
+
+        //向peer发送bitfield
+        dc.sendBitField(Array.from(this.bitset));
     }
 
     _setupDC(dc){
@@ -139,7 +178,8 @@ class Scheduler extends EventEmitter {
             if (!msg.sn || !dc.bitset) return;
             const sn = msg.sn;
             dc.bitset.add(sn);
-            if (!this.bitset.has(sn)) {              //防止重复下载
+            if (!this.bitset.has(sn)) {
+                //防止重复下载
                 this._increBitCounts(sn);
             }
         })
@@ -225,6 +265,13 @@ class Scheduler extends EventEmitter {
         }
     }
 
+    _criticaltimeout() {
+        const { logger } = this.engine;
+        logger.warn(`_criticaltimeout`);
+        this.criticalSeg = null;
+        this.callbacks.onTimeout(this.stats, this.context, null);
+        this.criticaltimeouter = null;
+    }
 }
 
 export default Scheduler;

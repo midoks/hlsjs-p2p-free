@@ -18,6 +18,7 @@ class DataChannel extends EventEmitter {
 		this.remotePeerId = remotePeerId;
 		this.delays = [];
 		this.msgQueue = [];
+		this.rcvdReqQueue = [];
 
 		this._datachannel = new simPeer({ 
 			initiator: isInit,
@@ -25,6 +26,8 @@ class DataChannel extends EventEmitter {
 		});
 
 		this._init(this._datachannel);
+
+		this.recordSended = this._adjustStreamingRate(10);
 		return this;
 	}
 
@@ -56,6 +59,54 @@ class DataChannel extends EventEmitter {
 				// _this.emit(e.event, e);
 			}		
 		});
+
+		dc.on("data",function(e) {
+			console.log("peer data:",e);
+			if ("string" == typeof e) {
+				logger.debug("datachannel receive string: " + e + "from " + _this.remotePeerId);
+				var r = JSON.parse(e);
+				if (!_this.connected) return void t.msgQueue.push(r);
+				switch (r.event) {
+				case Events.DC_PONG:
+					_this._handlePongMsg();
+					break;
+				case Events.DC_PING:
+					_this.sendJson({
+						event:Events.DC_PONG
+					});
+					break;
+				case Events.DC_PIECE:
+					_this._prepareForBinary(r.attachments, r.url, r.sn, r.size),
+					_this.emit(r.event, r);
+					break;
+				case Events.DC_PIECE_NOT_FOUND:
+					window.clearTimeout(t.requestTimeout),
+					_this.requestTimeout = null,
+					_this.emit(r.event, r);
+					break;
+				case Events.DC_REQUEST:
+					_this._handleRequestMsg(r);
+					break;
+				case Events.DC_GRANT:
+					_this._handleGrant(r);
+					break;
+				case Events.DC_PIECE_ACK:
+					_this._handlePieceAck();
+					break;
+				default:
+					_this.emit(r.event, r)
+				}
+			} else _this.bufArr.push(e),
+			0 === --_this.remainAttachments && (window.clearTimeout(t.requestTimeout), t.requestTimeout = null, t.sendJson({
+				event: Events.DC_PIECE_ACK,
+				sn: _this.bufSN,
+				url: _this.bufUrl
+			}), _this._handleBinaryData())
+		});
+
+		dc.once("close",function() {
+			_this.emit(Events.DC_CLOSE)
+		})
 	}
 
 	_sendPing(){
@@ -85,7 +136,7 @@ class DataChannel extends EventEmitter {
 						if (r) throw i
 					}
 				}
-				_this.delay = t / e.delays.length;
+				_this.delay = t / _this.delays.length;
 				_this.delays = [];
 			}
 		},100)
@@ -104,13 +155,119 @@ class DataChannel extends EventEmitter {
 	}
 
 	send(data){
-		this._datachannel && this._datachannel.connected && this._datachannel.send(data)
+		if (this._datachannel && this._datachannel.connected) {
+			this._datachannel.send(data)
+		}
 	}
 	receiveSignal(e) {
 		console.log("接收数据-receiveSignal:",e);
 		this._datachannel.signal(e)
 	}
 
+	_handlePongMsg() {
+		var e = performance.now() - this.ping;
+		this.delays.push(e)
+	}
+
+	_prepareForBinary (e, t, n, r) {
+		this.bufArr = [],
+		this.remainAttachments = e,
+		this.bufUrl = t,
+		this.bufSN = n,
+		this.expectedSize = r
+	}
+
+	_handleRequestMsg (e) {
+		this.rcvdReqQueue.length > 0 ? e.urgent ? this.rcvdReqQueue.push(e.sn) : this.rcvdReqQueue.unshift(e.sn) : this.emit(Events.DC_REQUEST, e)
+	}
+
+	_handleGrant (e) {
+		e.TTL > 0 && this.emit(Events.DC_GRANT, e)
+	}
+
+	_handlePieceAck() {
+		if (this.uploading = !1, window.clearTimeout(this.uploadTimeout), this.uploadTimeout = null, this.rcvdReqQueue.length > 0) {
+			var e = this.rcvdReqQueue.pop();
+			this.emit(Events.DC_REQUEST, {
+				sn: e
+			})
+		}
+	}
+
+	_handleBinaryData() {
+		var e = g.concat(this.bufArr);
+		e.byteLength == this.expectedSize && this.emit(Events.DC_RESPONSE, {
+			url: this.bufUrl,
+			sn: this.bufSN,
+			data: e
+		}),
+		this.bufUrl = "",
+		this.bufArr = [],
+		this.expectedSize = -1,
+		this.downloading = false;
+	}
+
+	_loadtimeout () {
+		var e = this.engine.logger;
+		if (e.warn("datachannel timeout while downloading from " + this.remotePeerId), this.emit(Events.DC_TIMEOUT), this.requestTimeout = null, this.downloading = !1, ++this.miss >= this.config.dcTolerance) {
+			var t = {
+				event: Events.DC_CLOSE
+			};
+			this.sendJson(t),
+			e.warn("datachannel download miss reach dcTolerance, close " + this.remotePeerId),
+			this.emit(Events.DC_ERROR)
+		}
+	}
+
+	requestDataByURL (e) {
+		var t = arguments.length > 1 && void 0 !== arguments[1] && arguments[1],
+		n = {
+			event: Events.DC_REQUEST,
+			url: e,
+			urgent: t
+		};
+		this.downloading = true,
+		this.sendJson(n),
+		t && (this.requestTimeout = window.setTimeout(this._loadtimeout.bind(this), 1e3 * this.config.dcRequestTimeout))
+	}
+
+	_uploadtimeout () {
+		this.engine.logger.warn("datachannel timeout while uploading to " + this.remotePeerId),
+		this.uploading = false,
+		this.rcvdReqQueue = []
+	}
+
+	_adjustStreamingRate(e) {
+		var t = this,
+		n = 0;
+		return this.adjustSRInterval = window.setInterval(function() {
+			t.streamingRate = Math.round(8 * n / e),
+			n = 0
+		},1e3 * e),
+		function(e) {
+			n += e
+		}
+	}
+
+	sendBuffer (e, t, n) {
+		this.uploading = !0,
+		this.uploadTimeout = window.setTimeout(this._uploadtimeout.bind(this), 1e3 * this.config.dcUploadTimeout);
+		var r = n.byteLength,
+		i = this.config.packetSize,
+		o = 0,
+		a = 0;
+		r % i == 0 ? a = r / i: (a = Math.floor(r / i) + 1, o = r % i);
+		var u = {
+			event: Events.DC_PIECE,
+			attachments: a,
+			url: t,
+			sn: e,
+			size: r
+		};
+		this.sendJson(u);
+		// for (var c = s(n, i, a, o), f = 0; f < c.length; f++) this.send(c[f]);
+		this.recordSended(r)
+	}
 }
 
 

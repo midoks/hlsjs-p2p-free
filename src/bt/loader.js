@@ -6,7 +6,7 @@ class FragLoader extends EventEmitter {
     constructor(config) {
         super();
 
-        console.log("FragLoader init",config);
+        // console.log("FragLoader init",config);
         this.logger = config.logger;
         // //denoted by sn
         this.currLoaded = config.currLoaded;
@@ -21,7 +21,7 @@ class FragLoader extends EventEmitter {
         this.scheduler = config.scheduler;
         this.fetcher = config.fetcher;
 
-        console.log(this.xhrLoader);
+        // console.log(this.xhrLoader);
 
         this.stats = this.xhrLoader.stats;
     }
@@ -42,7 +42,7 @@ class FragLoader extends EventEmitter {
         const { logger } = this;
         const frag = context.frag;
         //初始化flag
-        frag.loadByP2P = false;                
+        frag.loadByP2P = false;            
         frag.loadByHTTP = false;
 
 
@@ -64,12 +64,15 @@ class FragLoader extends EventEmitter {
                 }, 50)
 
              //如果在peers的bitmap中找到
-            } else if (this.scheduler.peersHasSN(frag.sn)) {                            
+            } else if (this.scheduler.peersHasSN(frag.sn)) {
+
+                console.log(`found sn ${frag.sn} from peers`);
                 logger.info(`found sn ${frag.sn} from peers`);
                 context.frag.loadByP2P = true;
                 this.scheduler.load(context, config, callbacks);
                  //如果P2P下载超时则立即切换到xhr下载
-                callbacks.onTimeout = (stats, context) => {                            
+                callbacks.onTimeout = (stats, context) => {    
+                    console.log("found 节点获取超时",frag.sn,frag.relurl);                        
                     logger.debug(`xhrLoader load ${frag.relurl} at ${frag.sn}`);
                     frag.loadByP2P = false;
                     frag.loadByHTTP = true;
@@ -79,6 +82,7 @@ class FragLoader extends EventEmitter {
                 //在onsucess回调中复制并缓存二进制数据
                 callbacks.onSuccess = (response, stats, context) => {                       
                     if (!this.bufMgr.hasSegOfURL(frag.relurl)) {
+                        console.log("found 节点获取成功",response.data, frag.relurl, frag.sn);
                         this.bufMgr.copyAndAddBuffer(response.data, frag.relurl, frag.sn);
                     }
                     this.fetcher.reportFlow(stats, true);

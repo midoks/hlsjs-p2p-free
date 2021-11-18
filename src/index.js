@@ -8,7 +8,7 @@ import Hlsjs from 'hls.js';
 import p2p from './p2p';
 
 let recommendedHlsjsConfig = {
-    maxBufferSize: 0 * 1000 * 1000,
+    maxBufferSize: 600 * 1000 * 1000,
     maxBufferLength: 30,
     liveSyncDuration: 30,
     fragLoadingTimeOut: 4000,              // used by fragment-loader
