@@ -67,6 +67,10 @@ class Fetcher extends EventEmitter {
 		1e3 * report_interval)
 	}
 
+	reportFlow(data){
+		console.log("上报FLOW",data);
+	}
+
 }
 
 

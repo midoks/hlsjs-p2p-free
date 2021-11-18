@@ -66,7 +66,7 @@ class DataChannel extends EventEmitter {
 	}
 
 	receiveSignal(e) {
-		console.log("receiveSignal:",e);
+		console.log("接收数据【receiveSigna】:",e);
 		this._datachannel.signal(e)
 	}
 

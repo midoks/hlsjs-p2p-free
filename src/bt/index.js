@@ -1,4 +1,5 @@
 
 import Tracker from './tracker';
+import FragLoader from './loader';
 
-export default  Tracker;
+export  {FragLoader, Tracker};

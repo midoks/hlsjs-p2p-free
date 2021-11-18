@@ -2,6 +2,8 @@ import EventEmitter from 'events';
 
 import {SignalWs,DataChannel,Events} from '../core';
 
+import Scheduler from './scheduler';
+
 class Tracker extends EventEmitter {
 	constructor(engine, fetcher, config) {
 		super();
@@ -9,7 +11,7 @@ class Tracker extends EventEmitter {
 		this.engine = engine;
         this.config = config;
         this.connected = false;
-        // this.scheduler = new BTScheduler(engine, config);
+        this.scheduler = new Scheduler(engine, config);
         this.DCMap = new Map();              //{key: remotePeerId, value: DataChannnel} 目前已经建立连接或正在建立连接的dc
         this.failedDCSet= new Set();         //{remotePeerId} 建立连接失败的dc
         this.signalerWs = null;              //信令服务器ws
@@ -22,8 +24,20 @@ class Tracker extends EventEmitter {
         this.peers = [];
 	}
 
+     set currentPlaySN(sn) {
+        this.scheduler.updatePlaySN(sn);
+    }
+
+    set currentLoadingSN(sn) {
+        this.scheduler.updateLoadingSN(sn);
+    }
+    
+    set currentLoadedSN(sn) {
+        //更新bitmap
+        this.scheduler.updateLoadedSN(sn);
+    }
+
     _tryConnectToPeer() {
-        console.log('_tryConnectToPeer:::');
         const { logger } = this.engine;
         if (this.peers.length === 0) return;
         let remotePeerId = this.peers.pop().id;
@@ -169,3 +183,6 @@ class Tracker extends EventEmitter {
 }
 
 export default Tracker;
+
+
+

@@ -6,7 +6,8 @@ import UAParser from 'ua-parser-js';
 import Logger from './utils/logger';
 import defaultP2PConfig from './config';
 import {Fetcher,getBrowserRTC} from './core';
-import Tracker from './bt';
+import {Tracker,FragLoader} from './bt';
+import BufferManager from './buffer';
 
 
 const uaParserResult = (new UAParser()).getResult();
@@ -60,8 +61,8 @@ class p2p extends EventEmitter {
 
         this.hlsjs.config.p2pEnabled = this.p2pEnabled;
         //实例化BufferManager
-        // this.bufMgr = new BufferManager(this, this.config);
-        // this.hlsjs.config.bufMgr = this.bufMgr;
+        this.bufMgr = new BufferManager(this, this.config);
+        this.hlsjs.config.bufMgr = this.bufMgr;
 
         //实例化Fetcher
         let fetcher = new Fetcher(this, this.config.key, window.encodeURIComponent(channel), this.config.announce, browserInfo);
@@ -69,13 +70,13 @@ class p2p extends EventEmitter {
         //实例化tracker服务器
         this.signaler = new Tracker(this, fetcher, this.config);
              
-        // this.signaler.scheduler.bufferManager = this.bufMgr;
+        this.signaler.scheduler.bufferManager = this.bufMgr;
         // //替换fLoader
-        // this.hlsjs.config.fLoader = FragLoader;
+        this.hlsjs.config.fLoader = FragLoader;
         // //向fLoader导入scheduler
-        // this.hlsjs.config.scheduler = this.signaler.scheduler;
+        this.hlsjs.config.scheduler = this.signaler.scheduler;
         // //在fLoader中使用fetcher
-        // this.hlsjs.config.fetcher = fetcher;
+        this.hlsjs.config.fetcher = fetcher;
 
 
         this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_LOADING, (id, data) => {
@@ -92,12 +93,12 @@ class p2p extends EventEmitter {
         this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_LOADED, (id, data) => {
 
         	console.log(this.hlsjs.constructor.Events.FRAG_LOADED, data);
-            //let sn = data.frag.sn;
-            //this.hlsjs.config.currLoaded = sn;
+            let sn = data.frag.sn;
+            this.hlsjs.config.currLoaded = sn;
 
             //用于BT算法
-            //this.signaler.currentLoadedSN = sn;                                
-            //this.hlsjs.config.currLoadedDuration = data.frag.duration;
+            this.signaler.currentLoadedSN = sn;                                
+            this.hlsjs.config.currLoadedDuration = data.frag.duration;
             // let bitrate = Math.round(data.frag.stats.loaded*8/data.frag.duration);
             // console.log('bitrate:',bitrate);
             //&& !this.signaler.connected
