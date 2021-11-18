@@ -8,7 +8,7 @@ import Hlsjs from 'hls.js';
 import p2p from './p2p';
 
 let recommendedHlsjsConfig = {
-    maxBufferSize: 0,
+    maxBufferSize: 60 * 1000 * 1000,
     maxBufferLength: 30,
     liveSyncDuration: 30,
     fragLoadingTimeOut: 4000,              // used by fragment-loader
@@ -16,14 +16,14 @@ let recommendedHlsjsConfig = {
 
 class P2PHlsjs extends Hlsjs {
 
-    static get P2PEvents() {
-        console.log("p2p:",P2PEngine.Events);
-        return P2PEngine.Events;
-    }
+    // static get P2PEvents() {
+    //     console.log("p2p:",P2PEngine.Events);
+    //     return P2PEngine.Events;
+    // }
 
-    static get uaParserResult() {
-        return P2PEngine.uaParserResult;
-    }
+    // static get uaParserResult() {
+    //     return P2PEngine.uaParserResult;
+    // }
 
     constructor(config = {}) {
 

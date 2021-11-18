@@ -84,7 +84,6 @@ class p2p extends EventEmitter {
             // console.log('FRAG_LOADING: ',data.frag);
             // logger.debug('FRAG_LOADING: ' + data.frag.sn);
             // this.signaler.currentLoadingSN = data.frag.sn;
-
         });
 
 
@@ -118,31 +117,31 @@ class p2p extends EventEmitter {
             // }
         });
 
-        // this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_CHANGED, (id, data) => {
-        //     // log('FRAG_CHANGED: '+JSON.stringify(data.frag, null, 2));
-        //     console.log('FRAG_CHANGED: '+data.frag.sn);
-        //     const sn = data.frag.sn;
-        //     this.hlsjs.config.currPlay = sn;
-        //     // this.signaler.currentPlaySN = sn;
-        // });
+        this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_CHANGED, (id, data) => {
+            // log('FRAG_CHANGED: '+JSON.stringify(data.frag, null, 2));
+            console.log('FRAG_CHANGED: '+data.frag.sn);
+            const sn = data.frag.sn;
+            this.hlsjs.config.currPlay = sn;
+            // this.signaler.currentPlaySN = sn;
+        });
 
-        // this.hlsjs.on(this.hlsjs.constructor.Events.ERROR, (event, data) => {
-        //     logger.error(`errorType ${data.type} details ${data.details} errorFatal ${data.fatal}`);
-        //     const errDetails = this.hlsjs.constructor.ErrorDetails;
-        //     switch (data.details) {
-        //         case errDetails.FRAG_LOAD_ERROR:
-        //         case errDetails.FRAG_LOAD_TIMEOUT:
-        //             this.fetcher.errsFragLoad ++;
-        //             break;
-        //         case errDetails.BUFFER_STALLED_ERROR:
-        //             this.fetcher.errsBufStalled ++;
-        //             break;
-        //         case errDetails.INTERNAL_EXCEPTION:
-        //             this.fetcher.errsInternalExpt ++;
-        //             break;
-        //         default:
-        //     }
-        // });
+        this.hlsjs.on(this.hlsjs.constructor.Events.ERROR, (event, data) => {
+            logger.error(`errorType ${data.type} details ${data.details} errorFatal ${data.fatal}`);
+            const errDetails = this.hlsjs.constructor.ErrorDetails;
+            switch (data.details) {
+                case errDetails.FRAG_LOAD_ERROR:
+                case errDetails.FRAG_LOAD_TIMEOUT:
+                    this.fetcher.errsFragLoad ++;
+                    break;
+                case errDetails.BUFFER_STALLED_ERROR:
+                    this.fetcher.errsBufStalled ++;
+                    break;
+                case errDetails.INTERNAL_EXCEPTION:
+                    this.fetcher.errsInternalExpt ++;
+                    break;
+                default:
+            }
+        });
 
         this.hlsjs.on(this.hlsjs.constructor.Events.DESTROYING, () => {
             // log('DESTROYING: '+JSON.stringify(frag));

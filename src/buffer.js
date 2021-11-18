@@ -17,7 +17,7 @@ class BufferManager extends EventEmitter {
         data: Buffer
         size: string
          */
-        this._segPool = new Map();             //存放seg的Map            relurl -> segment
+        this._segPool = new Map();             //存放seg的Map        relurl -> segment
         this._currBufSize = 0;                 //目前的buffer总大小
         this.sn2Url = new Map();               //以sn查找relurl      sn -> relurl
         this.overflowed = false;               //缓存是否溢出
@@ -27,15 +27,15 @@ class BufferManager extends EventEmitter {
         return this._currBufSize;
     }
 
-    hasSegOfURL(url) {                                                     //防止重复加入seg
+    hasSegOfURL(url) {
+        //防止重复加入seg
         return this._segPool.has(url);
     }
 
     copyAndAddBuffer(data, url, sn) {
-        console.log("copyAndAddBuffer",data, url, sn);
-        //先复制再缓存                       
+        //先复制再缓存
         let payloadBuf = Buffer.from(data);
-        console.log('copyAndAddBuffer payloadBuf:',payloadBuf);
+
         let byteLength = payloadBuf.byteLength;
         let targetBuffer = new Buffer(byteLength);
         payloadBuf.copy(targetBuffer);
@@ -47,7 +47,6 @@ class BufferManager extends EventEmitter {
             size: byteLength
         };
 
-        console.log("segment:",segment);
         this.addSeg(segment);
         this.sn2Url.set(sn, url);
     }
@@ -67,7 +66,7 @@ class BufferManager extends EventEmitter {
     addSeg(seg) {
         const { logger } = this.engine;
         this._segPool.set(seg.relurl, seg);
-        // this.urlSet.add(seg.relurl);
+        this.urlSet.add(seg.relurl);
         this._currBufSize += parseInt(seg.size);
         // logger.debug(`seg.size ${seg.size} _currBufSize ${this._currBufSize} maxBufSize ${this.config.maxBufSize}`);
         //去掉多余的数据
