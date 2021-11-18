@@ -1,6 +1,6 @@
 
 import EventEmitter from 'events';
-import Buffer from 'buffer';
+import {Buffer} from 'buffer';
 
 import {Events} from './core';
 
@@ -21,8 +21,6 @@ class BufferManager extends EventEmitter {
         this._currBufSize = 0;                 //目前的buffer总大小
         this.sn2Url = new Map();               //以sn查找relurl      sn -> relurl
         this.overflowed = false;               //缓存是否溢出
-
-        console.log("buffer:",Buffer);
     }
 
     get currBufSize() {
@@ -36,26 +34,26 @@ class BufferManager extends EventEmitter {
     copyAndAddBuffer(data, url, sn) {
         console.log("copyAndAddBuffer",data, url, sn);
         //先复制再缓存                       
-        var buf3=Buffer.from([1,2,3,4,5]);
-        console.log("buf3:",buf3);                
         let payloadBuf = Buffer.from(data);
         console.log('copyAndAddBuffer payloadBuf:',payloadBuf);
-        // let byteLength = payloadBuf.byteLength;
-        // let targetBuffer = new Buffer(byteLength);
-        // payloadBuf.copy(targetBuffer);
+        let byteLength = payloadBuf.byteLength;
+        let targetBuffer = new Buffer(byteLength);
+        payloadBuf.copy(targetBuffer);
 
-        // let segment = {
-        //     sn: sn,
-        //     relurl: url,
-        //     data: targetBuffer,
-        //     size: byteLength
-        // };
+        let segment = {
+            sn: sn,
+            relurl: url,
+            data: targetBuffer,
+            size: byteLength
+        };
 
-        // this.addSeg(segment);
-        // this.sn2Url.set(sn, url);
+        console.log("segment:",segment);
+        this.addSeg(segment);
+        this.sn2Url.set(sn, url);
     }
 
-    addBuffer(sn, url, buf) {                                             //直接缓存
+    //直接缓存
+    addBuffer(sn, url, buf) {         
         let segment = {
             sn: sn,
             relurl: url,
@@ -72,7 +70,8 @@ class BufferManager extends EventEmitter {
         // this.urlSet.add(seg.relurl);
         this._currBufSize += parseInt(seg.size);
         // logger.debug(`seg.size ${seg.size} _currBufSize ${this._currBufSize} maxBufSize ${this.config.maxBufSize}`);
-        while (this._currBufSize > this.config.maxBufSize) {                       //去掉多余的数据
+        //去掉多余的数据
+        while (this._currBufSize > this.config.maxBufSize) {
             const lastSeg =[...this._segPool.values()].shift();
             logger.info(`pop seg ${lastSeg.relurl} at ${lastSeg.sn}`);
             this._segPool.delete(lastSeg.relurl);
@@ -81,6 +80,9 @@ class BufferManager extends EventEmitter {
             if (!this.overflowed) this.overflowed = true;
             this.emit(Events.BM_LOST, lastSeg.sn);
         }
+
+        console.log("sn2Url:",this.sn2Url);
+        console.log("_segPool:",this._segPool);
     }
 
     getSegByURL(relurl) {
