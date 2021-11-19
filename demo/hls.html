@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DEMO</title>
+
+    <!-- <link rel="stylesheet" type="text/css" href="node_modules/dplayer/dist/DPlayer.min.css" /> -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" type="text/javascript"></script>
+
+    <script src="../node_modules/dplayer/dist/DPlayer.min.js" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body>
+<script id="debug"></script>
+<div id="dplayer" style="width:500px;height:300px;"></div>
+
+<script type="text/javascript">
+function init(){
+    const dp = new DPlayer({
+        container: document.getElementById('dplayer'),
+        screenshot: true,
+        video: {
+            url: 'https://v10.dious.cc/20211105/fqeY6Nt2/index.m3u8',
+            type: 'customHls',
+            customType: {
+                'customHls': function (video, player) {
+                    const ss = new Hls({
+                        debug: false,
+                        // Other hlsjsConfig options provided by hls.js
+                        p2pConfig: {
+                            debug: true,
+                            // announce: "http://127.0.0.1:3030",
+                            // wsSignalerAddr: 'ws://127.0.0.1:3030/ws',
+
+                            announce: "https://gop2p.cachecha.com",
+                            wsSignalerAddr: 'wss://gop2p.cachecha.com/ws',
+
+                            live: true,        
+                            // Other p2pConfig options provided by CDNBye http://www.cdnbye.com/en/
+                        }
+                    });
+                    ss.loadSource(video.src);
+                    ss.attachMedia(video);
+                }
+            }
+        },
+    });
+    // console.log(dp);
+}
+init();
+
+// $('#debug').attr('src','./dist/p2p.js?v='+(new Date()).getTime());
+$('#debug').on('load', function(){
+    init();    
+});
+
+
+</script>
+
+</body>
+</html>
