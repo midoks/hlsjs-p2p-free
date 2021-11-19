@@ -235,13 +235,19 @@ class Scheduler extends EventEmitter {
             if (!msg.url) {
                 url = this.bufMgr.getURLbySN(msg.sn);
             } else {
-                //请求url的request                                
+                //请求url的request
                 url = msg.url;
             }
             if (url && this.bufMgr.hasSegOfURL(url)) {
                 let seg = this.bufMgr.getSegByURL(url);
-                console.log("接收请求数据,现在发送:",msg, seg.relurl, seg.data);
+                console.log("接收请求数据,现在发送:",msg, seg, seg.relurl, seg.data);
                 dc.sendBuffer(msg.sn, seg.relurl, seg.data);
+
+                // _this.engine.tracker.signalerWs.send({
+                //     action: "tranx",
+                //     peer_id: this.peerId,
+                //     to_peer_id: l.remotePeerId
+                // })
             } else {
 
                 dc.sendJson({

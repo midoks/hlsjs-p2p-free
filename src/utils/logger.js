@@ -1,4 +1,3 @@
-import ReconnectingWebSocket from 'reconnecting-websocket';
 
 const logTypes = {
     debug: 0,
@@ -15,108 +14,47 @@ class Logger {
     constructor(config, channel) {
 
         this.config = config;
-        this.connected = false;
-        if (config.enableLogUpload) {
-            try {
-                this._ws = this._initWs(channel);
-            } catch (e) {
-                this._ws = null;
-            }
-        }
+
         if (!(config.logLevel in logTypes)) config.logLevel = 'none';
         if (!(config.logUploadLevel in logTypes)) config.logUploadLevel = 'none';
-        for (let i=0;i<logTypes[config.logLevel];i++) {
-            this[typesP[i]] = noop;
-        }
+
         for (let i=0;i<logTypes[config.logUploadLevel];i++) {
             this[typesU[i]] = noop;
         }
-        this.identifier = '';
     }
 
     debug(msg) {
-        this._debugP(msg);
-        this._debugU(msg);
+        this._debugP(...arguments);
     }
 
     info(msg) {
-        this._infoP(msg);
-        this._infoU(msg);
+        this._infoP(...arguments);
     }
 
     warn(msg) {
-        this._warnP(msg);
-        this._warnU(msg);
+        this._warnP(...arguments);
     }
 
     error(msg) {
-        this._errorP(msg);
-        this._errorU(msg);
+        this._errorP(...arguments);
     }
 
     _debugP(msg) {
-        console.log(msg);
+        console.log(...arguments);
     }
 
     _infoP(msg) {
-        console.info(msg);
+        console.info(...arguments);
     }
 
     _warnP(msg) {
-        console.warn(msg);
+        console.warn(...arguments);
     }
 
     _errorP(msg) {
-        console.error(msg);
+        console.error(...arguments);
     }
 
-    _debugU(msg) {
-        msg = `[${this.identifier} debug] > ${msg}`
-        this._uploadLog(msg);
-    }
-
-    _infoU(msg) {
-        msg = `[${this.identifier} info] > ${msg}`
-        this._uploadLog(msg);
-    }
-
-    _warnU(msg) {
-        msg = `[${this.identifier} warn] > ${msg}`
-        this._uploadLog(msg);
-    }
-
-    _errorU(msg) {
-        msg = `[${this.identifier} error] > ${msg}`
-        this._uploadLog(msg);
-    }
-
-    _uploadLog(msg) {
-        if (!this.connected) return;
-        this._ws.send(msg);
-    }
-
-    _initWs(channel) {
-        const wsOptions = {
-            maxRetries: this.config.wsMaxRetries,
-            minReconnectionDelay: this.config.wsReconnectInterval*1000
-        };
-        let ws = new ReconnectingWebSocket(this.config.logUploadAddr+`?info_hash=${window.encodeURIComponent(channel)}`, undefined, wsOptions);
-        ws.onopen = () => {
-            this.debug('Log websocket connection opened');
-            this.connected = true;
-        };
-        // ws.onmessage = (e) => {
-        //
-        //
-        // };
-        
-        //websocket断开时清除datachannel
-        ws.onclose = () => {                                            
-            this.warn(`Log websocket closed`);
-            this.connected = false;
-        };
-        return ws;
-    }
 }
 
 function noop() {

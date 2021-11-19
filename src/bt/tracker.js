@@ -22,6 +22,14 @@ class Tracker extends EventEmitter {
         peers: Array<Object{id:string}>
          */
         this.peers = [];
+
+
+        //debug
+        // var hls = new Hls();
+        // var video = document.getElementById('video');
+        // var videoSrc = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
+        // hls.loadSource(videoSrc);
+        // hls.attachMedia(video);
 	}
 
      set currentPlaySN(sn) {
@@ -54,7 +62,7 @@ class Tracker extends EventEmitter {
         const { logger } = this.engine;
         datachannel.on(Events.DC_SIGNAL, data => {
             const remotePeerId = datachannel.remotePeerId;
-            console.log("remotePeerId:",remotePeerId);
+            logger.debug("remotePeerId:",remotePeerId);
             _this.signalerWs.sendSignal(remotePeerId, data);
             //启动定时器，如果指定时间对方没有响应则连接下一个
             if (!_this.signalTimer && !_this.failedDCSet.has(remotePeerId)) {
@@ -68,7 +76,7 @@ class Tracker extends EventEmitter {
                 }, 10000);
             }
         }).once(Events.DC_OPEN, () => {
-            console.log("连接成功!!! - Events.DC_OPEN");
+            logger.debug("连接成功!!! - Events.DC_OPEN");
 
             _this.scheduler.handshakePeer(datachannel);
 

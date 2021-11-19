@@ -11,16 +11,20 @@ class BufferManager extends EventEmitter {
 
         this.engine = engine;
         this.config = config;
+
         /* segment
         sn: number
         relurl: string
         data: Buffer
         size: string
          */
-        this._segPool = new Map();             //存放seg的Map        relurl -> segment
+        this._segPool = new Map();             //存放seg的Map     relurl -> segment
         this._currBufSize = 0;                 //目前的buffer总大小
-        this.sn2Url = new Map();               //以sn查找relurl      sn -> relurl
+        this.sn2Url = new Map();               //以sn查找relurl    sn -> relurl
         this.overflowed = false;               //缓存是否溢出
+
+
+
     }
 
     get currBufSize() {
@@ -83,8 +87,9 @@ class BufferManager extends EventEmitter {
             this.emit(Events.BM_LOST, lastSeg.sn);
         }
 
-        console.log("sn2Url:",this.sn2Url);
-        console.log("_segPool:",this._segPool);
+
+        logger.debug("sn2Url:",this.sn2Url);
+        logger.debug("_segPool:",this._segPool);
     }
 
     getSegByURL(relurl) {
