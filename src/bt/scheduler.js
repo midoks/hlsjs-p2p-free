@@ -159,6 +159,7 @@ class Scheduler extends EventEmitter {
     }
 
     _setupDC(dc){
+        var _this = this;
         const { logger } = this.engine;
         dc.on(Events.DC_BITFIELD, msg => {
             if (!msg.field) return;
@@ -202,19 +203,31 @@ class Scheduler extends EventEmitter {
             }
         })
         .on(Events.DC_RESPONSE, response => {                                            //接收到完整二进制数据
-            if (this.criticalSeg && this.criticalSeg.relurl === response.url && this.criticaltimeouter) {
-                logger.info(`receive criticalSeg url ${response.url}`);
-                window.clearTimeout(this.criticaltimeouter);                             //清除定时器
-                this.criticaltimeouter = null;
-                let stats = this.stats;
-                stats.tload = Math.max(stats.tfirst, performance.now());
-                stats.loaded = stats.total = response.data.byteLength;
-                this.criticalSeg = null;
-                this.callbacks.onSuccess(response, stats, this.context);
-            } else {
-                this.bufMgr.addBuffer(response.sn, response.url, response.data);
+
+            try{
+                console.log("DC_RESPONSE ii :",this.criticalSeg ,this.criticalSeg.relurl ,response.url , this.criticaltimeouter);
+                console.log("DC_RESPONSE ii tf:",this.criticalSeg && this.criticalSeg.relurl === response.url && this.criticaltimeouter);
+                if (this.criticalSeg && this.criticalSeg.relurl === response.url && this.criticaltimeouter) {
+                    console.log("receive criticalSeg url ",response.url);
+                    logger.info(`receive criticalSeg url ${response.url}`);
+                    window.clearTimeout(this.criticaltimeouter);                             //清除定时器
+                    _this.criticaltimeouter = null;
+                    let stats = _this.stats;
+
+                    console.log("stats:",stats);
+                    stats.tload = Math.max(stats.tfirst, performance.now());
+                    stats.loaded = stats.total = response.data.byteLength;
+                    _this.criticalSeg = null;
+
+                    response.data = response.data.buffer;
+                    _this.callbacks.onSuccess(response, stats, this.context);
+                } else {
+                    this.bufMgr.addBuffer(response.sn, response.url, response.data);
+                }
+                this.updateLoadedSN(response.sn);
+            }catch(e){
+                console.log("DC_RESPONSE err:",e);
             }
-            this.updateLoadedSN(response.sn);
         })
         .on(Events.DC_REQUEST, msg => {
             let url = '';
@@ -227,8 +240,10 @@ class Scheduler extends EventEmitter {
             }
             if (url && this.bufMgr.hasSegOfURL(url)) {
                 let seg = this.bufMgr.getSegByURL(url);
+                console.log("接收请求数据,现在发送:",msg, seg.relurl, seg.data);
                 dc.sendBuffer(msg.sn, seg.relurl, seg.data);
             } else {
+
                 dc.sendJson({
                     event: Events.DC_PIECE_NOT_FOUND,
                     url: url,

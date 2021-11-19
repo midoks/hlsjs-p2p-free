@@ -34,12 +34,14 @@ class BufferManager extends EventEmitter {
 
     copyAndAddBuffer(data, url, sn) {
         //先复制再缓存
+        console.log("copyAndAddBuffer 复制前:",data);
         let payloadBuf = Buffer.from(data);
 
         let byteLength = payloadBuf.byteLength;
         let targetBuffer = new Buffer(byteLength);
         payloadBuf.copy(targetBuffer);
 
+        console.log("copyAndAddBuffer:",payloadBuf);
         let segment = {
             sn: sn,
             relurl: url,
@@ -49,6 +51,7 @@ class BufferManager extends EventEmitter {
 
         this.addSeg(segment);
         this.sn2Url.set(sn, url);
+
     }
 
     //直接缓存
@@ -80,8 +83,8 @@ class BufferManager extends EventEmitter {
             this.emit(Events.BM_LOST, lastSeg.sn);
         }
 
-        // console.log("sn2Url:",this.sn2Url);
-        // console.log("_segPool:",this._segPool);
+        console.log("sn2Url:",this.sn2Url);
+        console.log("_segPool:",this._segPool);
     }
 
     getSegByURL(relurl) {

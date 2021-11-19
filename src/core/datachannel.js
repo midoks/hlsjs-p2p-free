@@ -4,6 +4,7 @@ import ReconnectingWebSocket from 'reconnecting-websocket';
 import SimplePeer from 'simple-peer';
 
 import Events from './events';
+import {Buffer} from 'buffer';
 
 
 class DataChannel extends EventEmitter {
@@ -61,11 +62,11 @@ class DataChannel extends EventEmitter {
 		});
 
 		dc.on("data",function(e) {
-			console.log("peer data:",e);
+			console.log("接收数据[peer]:",e);
 			if ("string" == typeof e) {
 				logger.debug("datachannel receive string: " + e + "from " + _this.remotePeerId);
 				var r = JSON.parse(e);
-				if (!_this.connected) return void t.msgQueue.push(r);
+				if (!_this.connected) return void _this.msgQueue.push(r);
 				switch (r.event) {
 				case Events.DC_PONG:
 					_this._handlePongMsg();
@@ -97,7 +98,7 @@ class DataChannel extends EventEmitter {
 					_this.emit(r.event, r)
 				}
 			} else _this.bufArr.push(e),
-			0 === --_this.remainAttachments && (window.clearTimeout(t.requestTimeout), t.requestTimeout = null, t.sendJson({
+			0 === --_this.remainAttachments && (window.clearTimeout(_this.requestTimeout), _this.requestTimeout = null, _this.sendJson({
 				event: Events.DC_PIECE_ACK,
 				sn: _this.bufSN,
 				url: _this.bufUrl
@@ -186,8 +187,10 @@ class DataChannel extends EventEmitter {
 	}
 
 	_handlePieceAck() {
+
 		if (this.uploading = !1, window.clearTimeout(this.uploadTimeout), this.uploadTimeout = null, this.rcvdReqQueue.length > 0) {
 			var e = this.rcvdReqQueue.pop();
+			console.log("_handlePieceAck:",e);
 			this.emit(Events.DC_REQUEST, {
 				sn: e
 			})
@@ -195,15 +198,16 @@ class DataChannel extends EventEmitter {
 	}
 
 	_handleBinaryData() {
-		var e = g.concat(this.bufArr);
+		var e = Buffer.concat(this.bufArr);
+		console.log("_handleBinaryData::",e, e.byteLength , this.expectedSize);
 		e.byteLength == this.expectedSize && this.emit(Events.DC_RESPONSE, {
 			url: this.bufUrl,
 			sn: this.bufSN,
 			data: e
-		}),
-		this.bufUrl = "",
-		this.bufArr = [],
-		this.expectedSize = -1,
+		});
+		this.bufUrl = "";
+		this.bufArr = [];
+		this.expectedSize = -1;
 		this.downloading = false;
 	}
 
@@ -227,6 +231,18 @@ class DataChannel extends EventEmitter {
 			urgent: t
 		};
 		this.downloading = true,
+		this.sendJson(n),
+		t && (this.requestTimeout = window.setTimeout(this._loadtimeout.bind(this), 1e3 * this.config.dcRequestTimeout))
+	}
+
+	requestDataBySN (e) {
+		var t = arguments.length > 1 && void 0 !== arguments[1] && arguments[1],
+		n = {
+			event: Events.DC_REQUEST,
+			sn: e,
+			urgent: t
+		};
+		this.downloading = !0,
 		this.sendJson(n),
 		t && (this.requestTimeout = window.setTimeout(this._loadtimeout.bind(this), 1e3 * this.config.dcRequestTimeout))
 	}
@@ -265,9 +281,25 @@ class DataChannel extends EventEmitter {
 			size: r
 		};
 		this.sendJson(u);
-		// for (var c = s(n, i, a, o), f = 0; f < c.length; f++) this.send(c[f]);
+		for (var c = s(n, i, a, o), f = 0; f < c.length; f++) {
+			this.send(c[f]);
+		}
 		this.recordSended(r)
 	}
+}
+
+function s(e, t, n, r) {
+	var i = [];
+	if (r) {
+		for (var o = void 0,
+		a = 0; a < n - 1; a++) o = e.slice(a * t, (a + 1) * t),
+		i.push(o);
+		o = e.slice(e.byteLength - r, e.byteLength),
+		i.push(o)
+	} else for (var s = void 0,
+	u = 0; u < n; u++) s = e.slice(u * t, (u + 1) * t),
+	i.push(s);
+	return i
 }
 
 

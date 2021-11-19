@@ -91,7 +91,7 @@ class p2p extends EventEmitter {
         this.signalTried = false;                               
         this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_LOADED, (id, data) => {
 
-        	console.log(this.hlsjs.constructor.Events.FRAG_LOADED, data);
+        	// console.log(this.hlsjs.constructor.Events.FRAG_LOADED, data);
             let sn = data.frag.sn;
             this.hlsjs.config.currLoaded = sn;
 
@@ -111,10 +111,10 @@ class p2p extends EventEmitter {
             }
             // this.streamingRate = (this.streamingRate*this.fragLoadedCounter + bitrate)/(++this.fragLoadedCounter);
             // this.signaler.scheduler.streamingRate = Math.floor(this.streamingRate);
-            // if (!data.frag.loadByHTTP) {
-            //     data.frag.loadByP2P = false;
-            //     data.frag.loadByHTTP = true;
-            // }
+            if (!data.frag.loadByHTTP) {
+                data.frag.loadByP2P = false;
+                data.frag.loadByHTTP = true;
+            }
         });
 
         this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_CHANGED, (id, data) => {
@@ -122,7 +122,7 @@ class p2p extends EventEmitter {
             console.log('FRAG_CHANGED: '+data.frag.sn);
             const sn = data.frag.sn;
             this.hlsjs.config.currPlay = sn;
-            // this.signaler.currentPlaySN = sn;
+            this.signaler.currentPlaySN = sn;
         });
 
         this.hlsjs.on(this.hlsjs.constructor.Events.ERROR, (event, data) => {
