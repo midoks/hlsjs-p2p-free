@@ -21,8 +21,6 @@ class FragLoader extends EventEmitter {
         this.scheduler = config.scheduler;
         this.fetcher = config.fetcher;
 
-        // console.log(this.xhrLoader);
-
         this.stats = this.xhrLoader.stats;
     }
 
@@ -38,7 +36,6 @@ class FragLoader extends EventEmitter {
      首先从缓存中寻找请求的seg，如果缓存中找不到则用http请求。
      */
     load(context, config, callbacks) {
-        // console.log("loader:",context, config, callbacks);
         const { logger } = this;
         const frag = context.frag;
         //初始化flag
@@ -65,14 +62,11 @@ class FragLoader extends EventEmitter {
 
              //如果在peers的bitmap中找到
             } else if (this.scheduler.peersHasSN(frag.sn)) {
-
-                console.log(`found sn ${frag.sn} from peers`);
                 logger.info(`found sn ${frag.sn} from peers`);
                 context.frag.loadByP2P = true;
                 this.scheduler.load(context, config, callbacks);
                  //如果P2P下载超时则立即切换到xhr下载
-                callbacks.onTimeout = (stats, context) => {    
-                    console.log("found 节点获取超时",frag.sn,frag.relurl);                        
+                callbacks.onTimeout = (stats, context) => {                       
                     logger.debug(`xhrLoader load ${frag.relurl} at ${frag.sn}`);
                     frag.loadByP2P = false;
                     frag.loadByHTTP = true;
@@ -82,15 +76,11 @@ class FragLoader extends EventEmitter {
                 //在onsucess回调中复制并缓存二进制数据
                 callbacks.onSuccess = (response, stats, context) => {                       
                     if (!this.bufMgr.hasSegOfURL(frag.relurl)) {
-                        console.log("found 节点获取成功",response, frag.relurl, frag.sn);
-                        // console.log("found 节点获取成功 转换",response.data.buffer, frag.relurl, frag.sn);
                         this.bufMgr.copyAndAddBuffer(response.data, frag.relurl, frag.sn);
-                        console.log("found 节点获取成功2",response, frag.relurl, frag.sn);
                     }
                     this.fetcher.reportFlow(stats, true);
                     frag.loaded = stats.loaded;
 
-                    console.log("found", frag,stats);
                     console.log("P2P loaded time " + (stats.tload - stats.trequest) + "ms");
                     onSuccess(response,stats,context);
                 };
@@ -103,8 +93,7 @@ class FragLoader extends EventEmitter {
                 //在onsucess回调中复制并缓存二进制数据
                 callbacks.onSuccess = (response, stats, context) => {       
                     if (!this.bufMgr.hasSegOfURL(frag.relurl)) {
-                        console.log("http load 成功:",stats, response, frag.relurl, frag.sn);
-                        console.log("HTTP loaded time " + (stats.tload - stats.trequest) + "ms");
+                        console.log("HTTP loaded time "+ frag.relurl+ " " + (stats.tload - stats.trequest) + "ms");
                         this.bufMgr.copyAndAddBuffer(response.data, frag.relurl, frag.sn);
                     }
                     this.fetcher.reportFlow(stats, false);
@@ -116,9 +105,6 @@ class FragLoader extends EventEmitter {
             console.log(e);
         }
     }
-
-
 }
-
 
 export default FragLoader;

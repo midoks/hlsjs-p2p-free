@@ -37,11 +37,7 @@ class p2p extends EventEmitter {
             let logger = new Logger(this.config, channel);
             this.hlsjs.config.logger = this.logger = logger;
 
-            // try{
-            //     this._init(channel);
-            // }catch(e){
-            //     console.log(e);
-            // }
+      
             this._init(channel);
             hlsjs.off(hlsjs.constructor.Events.LEVEL_LOADED, onLevelLoaded);
         };
@@ -50,7 +46,6 @@ class p2p extends EventEmitter {
     }
 
      _init(channel) {
-     	console.log('_init',channel);
         const { logger } = this;
         //上传浏览器信息
         let browserInfo = {
@@ -80,10 +75,8 @@ class p2p extends EventEmitter {
 
 
         this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_LOADING, (id, data) => {
-            // console.log('FRAG_LOADING: ' + JSON.stringify(data.frag));
-            // console.log('FRAG_LOADING: ',data.frag);
-            // logger.debug('FRAG_LOADING: ' + data.frag.sn);
-            // this.signaler.currentLoadingSN = data.frag.sn;
+            logger.debug('FRAG_LOADING: ' + data.frag.sn);
+            this.signaler.currentLoadingSN = data.frag.sn;
         });
 
 
@@ -91,7 +84,6 @@ class p2p extends EventEmitter {
         this.signalTried = false;                               
         this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_LOADED, (id, data) => {
 
-        	// console.log(this.hlsjs.constructor.Events.FRAG_LOADED, data);
             let sn = data.frag.sn;
             this.hlsjs.config.currLoaded = sn;
 
@@ -153,30 +145,28 @@ class p2p extends EventEmitter {
 
     //停止p2p
     disableP2P() {    
-        console.log("disableP2P!!!!")
-        // const { logger } = this;
-        // logger.warn(`disableP2P`);
-        // if (this.p2pEnabled) {
-        //     this.p2pEnabled = false;
-        //     this.config.p2pEnabled = this.hlsjs.config.p2pEnabled = this.p2pEnabled;
-        //     if (this.signaler) {
-        //         this.signaler.stopP2P();
-        //     }
-        // }
+        const { logger } = this;
+        logger.warn(`disableP2P`);
+        if (this.p2pEnabled) {
+            this.p2pEnabled = false;
+            this.config.p2pEnabled = this.hlsjs.config.p2pEnabled = this.p2pEnabled;
+            if (this.signaler) {
+                this.signaler.stopP2P();
+            }
+        }
     }
 
     //在停止的情况下重新启动P2P
     enableP2P() {       
-        console.log("enableP2P!!!!")
-        // const { logger } = this;
-        // logger.warn(`enableP2P`);
-        // if (!this.p2pEnabled) {
-        //     this.p2pEnabled = true;
-        //     this.config.p2pEnabled = this.hlsjs.config.p2pEnabled = this.p2pEnabled;
-        //     if (this.signaler) {
-        //         this.signaler.resumeP2P();
-        //     }
-        // }
+        const { logger } = this;
+        logger.warn(`enableP2P`);
+        if (!this.p2pEnabled) {
+            this.p2pEnabled = true;
+            this.config.p2pEnabled = this.hlsjs.config.p2pEnabled = this.p2pEnabled;
+            if (this.signaler) {
+                this.signaler.resumeP2P();
+            }
+        }
     }
 }
 
@@ -184,5 +174,3 @@ class p2p extends EventEmitter {
 p2p.WEBRTC_SUPPORT = !!getBrowserRTC();
 p2p.version = "0.0.1";
 export default p2p;
-
-

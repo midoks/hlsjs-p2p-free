@@ -15,12 +15,19 @@ class Logger {
 
         this.config = config;
 
-        if (!(config.logLevel in logTypes)) config.logLevel = 'none';
-        if (!(config.logUploadLevel in logTypes)) config.logUploadLevel = 'none';
-
-        for (let i=0;i<logTypes[config.logUploadLevel];i++) {
-            this[typesU[i]] = noop;
+        if (!(config.logLevel in logTypes)){
+            config.logLevel = 'none';
         }
+
+        if (config.debug){
+            console.log("开始调试");
+        } else {
+             for (let i=0;i<logTypes[config.logTypes];i++) {
+                this[typesP[i]] = noop;
+            }
+        }
+
+       
     }
 
     debug(msg) {
@@ -40,19 +47,19 @@ class Logger {
     }
 
     _debugP(msg) {
-        console.log(...arguments);
+        console.log("P2P调试:",...arguments);
     }
 
     _infoP(msg) {
-        console.info(...arguments);
+        console.info("P2P调试:",...arguments);
     }
 
     _warnP(msg) {
-        console.warn(...arguments);
+        console.warn("P2P调试:",...arguments);
     }
 
     _errorP(msg) {
-        console.error(...arguments);
+        console.error("P2P调试:",...arguments);
     }
 
 }

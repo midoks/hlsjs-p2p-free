@@ -22,9 +22,6 @@ class BufferManager extends EventEmitter {
         this._currBufSize = 0;                 //目前的buffer总大小
         this.sn2Url = new Map();               //以sn查找relurl    sn -> relurl
         this.overflowed = false;               //缓存是否溢出
-
-
-
     }
 
     get currBufSize() {
@@ -38,14 +35,15 @@ class BufferManager extends EventEmitter {
 
     copyAndAddBuffer(data, url, sn) {
         //先复制再缓存
-        console.log("copyAndAddBuffer 复制前:",data);
+
+        // console.log("copyAndAddBuffer 复制前:",data);
         let payloadBuf = Buffer.from(data);
 
         let byteLength = payloadBuf.byteLength;
         let targetBuffer = new Buffer(byteLength);
         payloadBuf.copy(targetBuffer);
 
-        console.log("copyAndAddBuffer:",payloadBuf);
+        // console.log("copyAndAddBuffer 复制后:",payloadBuf);
         let segment = {
             sn: sn,
             relurl: url,
@@ -87,9 +85,9 @@ class BufferManager extends EventEmitter {
             this.emit(Events.BM_LOST, lastSeg.sn);
         }
 
-
-        logger.debug("sn2Url:",this.sn2Url);
-        logger.debug("_segPool:",this._segPool);
+        //本地调试使用
+        //logger.debug("sn2Url:",this.sn2Url);
+        //logger.debug("_segPool:",this._segPool);
     }
 
     getSegByURL(relurl) {

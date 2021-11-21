@@ -35,8 +35,7 @@ class Scheduler extends EventEmitter {
     }
 
     updateLoadedSN(sn) {
-    	console.log("scheduler updateLoadedSN peerMap:",this.peerMap);
-    	// console.log("scheduler updateLoadedSN:", sn);
+    	// console.log("scheduler updateLoadedSN peerMap:",this.peerMap);
     	//在bitset中记录
         this.bitset.add(sn)
         if (this.bitCounts.has(sn)) {
@@ -137,7 +136,7 @@ class Scheduler extends EventEmitter {
 
         let target;
         for (let peer of this.peerMap.values()) {
-            console.log("scheduler load",peer);
+            console.log("scheduler load", peer);
             if (peer.bitset.has(frag.sn)) {
                 target = peer;
             }
@@ -145,7 +144,7 @@ class Scheduler extends EventEmitter {
 
         if (target) {
             // target.requestDataBySN(frag.sn, true);
-            target.requestDataByURL(frag.relurl, true);                            //critical的根据url请求
+            target.requestDataByURL(frag.relurl, true); //critical的根据url请求
             logger.info(`request criticalSeg url ${frag.relurl} at ${frag.sn}`);
         }
         this.criticaltimeouter = window.setTimeout(this._criticaltimeout.bind(this), this.config.loadTimeout*1000);
@@ -204,30 +203,24 @@ class Scheduler extends EventEmitter {
         })
         .on(Events.DC_RESPONSE, response => {                                            //接收到完整二进制数据
 
-            try{
-                console.log("DC_RESPONSE ii :",this.criticalSeg ,this.criticalSeg.relurl ,response.url , this.criticaltimeouter);
-                console.log("DC_RESPONSE ii tf:",this.criticalSeg && this.criticalSeg.relurl === response.url && this.criticaltimeouter);
-                if (this.criticalSeg && this.criticalSeg.relurl === response.url && this.criticaltimeouter) {
-                    console.log("receive criticalSeg url ",response.url);
-                    logger.info(`receive criticalSeg url ${response.url}`);
-                    window.clearTimeout(this.criticaltimeouter);                             //清除定时器
-                    _this.criticaltimeouter = null;
-                    let stats = _this.stats;
+            if (this.criticalSeg && this.criticalSeg.relurl === response.url && this.criticaltimeouter) {
+                logger.info(`receive criticalSeg url ${response.url}`);
+                window.clearTimeout(this.criticaltimeouter);                             //清除定时器
+                _this.criticaltimeouter = null;
+                let stats = _this.stats;
 
-                    console.log("stats:",stats);
-                    stats.tload = Math.max(stats.tfirst, performance.now());
-                    stats.loaded = stats.total = response.data.byteLength;
-                    _this.criticalSeg = null;
+                stats.tload = Math.max(stats.tfirst, performance.now());
+                stats.loaded = stats.total = response.data.byteLength;
+                _this.criticalSeg = null;
 
-                    response.data = response.data.buffer;
-                    _this.callbacks.onSuccess(response, stats, this.context);
-                } else {
-                    this.bufMgr.addBuffer(response.sn, response.url, response.data);
-                }
-                this.updateLoadedSN(response.sn);
-            }catch(e){
-                console.log("DC_RESPONSE err:",e);
+                //重要
+                response.data = response.data.buffer;
+                _this.callbacks.onSuccess(response, stats, this.context);
+            } else {
+                this.bufMgr.addBuffer(response.sn, response.url, response.data);
             }
+            this.updateLoadedSN(response.sn);
+           
         })
         .on(Events.DC_REQUEST, msg => {
             let url = '';
@@ -243,11 +236,10 @@ class Scheduler extends EventEmitter {
                 console.log("接收请求数据,现在发送:",msg, seg, seg.relurl, seg.data);
                 dc.sendBuffer(msg.sn, seg.relurl, seg.data);
 
-                // _this.engine.tracker.signalerWs.send({
-                //     action: "tranx",
-                //     peer_id: this.peerId,
-                //     to_peer_id: l.remotePeerId
-                // })
+                this.engine.signaler.signalerWs.send({
+                    action: "tranx",
+                    to_peer_id: dc.remotePeerId
+                })
             } else {
 
                 dc.sendJson({

@@ -32,7 +32,4 @@ let defaultP2PConfig = {
 
 };
 
-
-
-
 export default defaultP2PConfig;

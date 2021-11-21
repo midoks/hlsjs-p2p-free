@@ -25,11 +25,9 @@ class Tracker extends EventEmitter {
 
 
         //debug
-        // var hls = new Hls();
-        // var video = document.getElementById('video');
-        // var videoSrc = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
-        // hls.loadSource(videoSrc);
-        // hls.attachMedia(video);
+        var hls = new Hls();
+        var videoSrc = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
+        hls.loadSource(videoSrc);
 	}
 
      set currentPlaySN(sn) {
@@ -77,7 +75,6 @@ class Tracker extends EventEmitter {
             }
         }).once(Events.DC_OPEN, () => {
             logger.debug("连接成功!!! - Events.DC_OPEN");
-
             _this.scheduler.handshakePeer(datachannel);
 
             //如果dc数量不够则继续尝试连接
@@ -92,14 +89,12 @@ class Tracker extends EventEmitter {
 
     _initSignalerWs() {
         const { logger } = this.engine;
-
-        console.log("_initSignalerWs",this.peerId);
+        logger.debug("_initSignalerWs:",this.peerId);
         let websocket = new SignalWs(this.engine, this.peerId, this.config);
         websocket.onopen = () => {
             this.connected = true;
             this._tryConnectToPeer();
         };
-
         websocket.onmessage = (e) => {
             let msg = JSON.parse(e.data);
             let action = msg.action;
@@ -107,7 +102,6 @@ class Tracker extends EventEmitter {
                 case 'signal':
                     if (this.failedDCSet.has(msg.from_peer_id)) return;
                     logger.debug(`start handle signal of ${msg.from_peer_id}`);
-                    console.log(`start handle signal of ${msg.from_peer_id}`);
                     window.clearTimeout(this.signalTimer);      //接收到信令后清除定时器
                     this.signalTimer = null;
                     if (!msg.data) {                            //如果对等端已不在线
@@ -137,26 +131,26 @@ class Tracker extends EventEmitter {
     }
 
 	resumeP2P(){
-		console.log('Tracker resumeP2P');
+		
         const { logger } = this.engine;
         var _this = this;
-        try{
-            this.fetcher.btAnnounce().then(json => {
-                logger.info(`announceURL response ${JSON.stringify(json)}`)
-                _this.peerId = json.data.id;
-                logger.identifier = _this.peerId;
-                this.fetcher.btHeartbeat(json.data.report_interval);
-                // this.fetcher.btStatsStart(json.report_limit);
-                this.signalerWs = this._initSignalerWs();  //连上tracker后开始连接信令服务器
-                this._handlePeers(json.data.peers);
-                // this.engine.emit('peerId', this.peerId);
-            }).catch(err => {
-                console.log(err);
-            })
 
-        }catch(e){
-            console.log(e)
-        }
+        logger.debug('Tracker resumeP2P');
+       
+        this.fetcher.btAnnounce().then(json => {
+            logger.info(`announceURL response ${JSON.stringify(json)}`)
+            _this.peerId = json.data.id;
+            logger.identifier = _this.peerId;
+            this.fetcher.btHeartbeat(json.data.report_interval);
+            // this.fetcher.btStatsStart(json.report_limit);
+            this.signalerWs = this._initSignalerWs();  //连上tracker后开始连接信令服务器
+            this._handlePeers(json.data.peers);
+            // this.engine.emit('peerId', this.peerId);
+        }).catch(err => {
+            console.log(err);
+        })
+
+        
 	}
 
     _handleSignal(remotePeerId, data) {
@@ -194,7 +188,6 @@ class Tracker extends EventEmitter {
             return true;
         });
     }
-
 
 	destroy() {
         window.clearInterval(this.heartbeater);

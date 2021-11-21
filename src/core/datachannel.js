@@ -16,10 +16,12 @@ class DataChannel extends EventEmitter {
 		this.channelId = isInit ? localPeerId + "-" + remotePeerId: remotePeerId + "-" + localPeerId,
 		this.config = config;
 		this.connected = false;
+		this.localPeerId = localPeerId;
 		this.remotePeerId = remotePeerId;
 		this.delays = [];
 		this.msgQueue = [];
 		this.rcvdReqQueue = [];
+
 
 		this._datachannel = new simPeer({ 
 			initiator: isInit,
