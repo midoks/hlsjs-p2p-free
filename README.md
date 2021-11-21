@@ -2,7 +2,14 @@
 hls集成P2P功能的前端播放器。
 
 # 接入方法
-- https://cdn.jsdelivr.net/gh/midoks/hlsjs-p2p-free@latest/dist/p2p.min.js
+
+ ```html
+<script src="//cdn.jsdelivr.net/npm/hls.js@latest"></script>
+```
+with
+ ```html
+<script src="//cdn.jsdelivr.net/gh/midoks/hlsjs-p2p-free@latest/dist/p2p.min.js"></script>
+```
 
 
 # 服务端
