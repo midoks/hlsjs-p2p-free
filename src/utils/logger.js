@@ -12,7 +12,6 @@ const typesU = ['_debugU', '_infoU', '_warnU', '_errorU'];
 
 class Logger {
     constructor(config, channel) {
-
         this.config = config;
 
         if (!(config.logLevel in logTypes)){
@@ -22,12 +21,10 @@ class Logger {
         if (config.debug){
             console.log("开始调试");
         } else {
-             for (let i=0;i<logTypes[config.logTypes];i++) {
+             for (let i=0;i<logTypes[config.logLevel];i++) {
                 this[typesP[i]] = noop;
             }
-        }
-
-       
+        }       
     }
 
     debug(msg) {
@@ -64,8 +61,6 @@ class Logger {
 
 }
 
-function noop() {
-
-}
+function noop() {}
 
 export default Logger;

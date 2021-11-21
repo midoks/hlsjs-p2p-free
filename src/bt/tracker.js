@@ -25,9 +25,9 @@ class Tracker extends EventEmitter {
 
 
         //debug
-        var hls = new Hls();
-        var videoSrc = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
-        hls.loadSource(videoSrc);
+        // var hls = new Hls();
+        // var videoSrc = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
+        // hls.loadSource(videoSrc);
 	}
 
      set currentPlaySN(sn) {
@@ -145,9 +145,9 @@ class Tracker extends EventEmitter {
             // this.fetcher.btStatsStart(json.report_limit);
             this.signalerWs = this._initSignalerWs();  //连上tracker后开始连接信令服务器
             this._handlePeers(json.data.peers);
-            // this.engine.emit('peerId', this.peerId);
+            this.engine.emit('peerId', this.peerId);
         }).catch(err => {
-            console.log(err);
+            // console.log(err);
         })
 
         

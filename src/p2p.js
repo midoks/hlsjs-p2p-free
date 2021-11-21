@@ -27,17 +27,16 @@ class p2p extends EventEmitter {
         
         const onLevelLoaded = (event, data) => {
 
-        	console.log('onLevelLoaded',event, data);
-
             const isLive = data.details.live;
             this.config.live = isLive;
             let channel = hlsjs.url.split('?')[0];
 
-            //初始化logger
+             //初始化logger
             let logger = new Logger(this.config, channel);
             this.hlsjs.config.logger = this.logger = logger;
 
-      
+        	logger.debug('M3U8文件加载成功:',event, data);            
+
             this._init(channel);
             hlsjs.off(hlsjs.constructor.Events.LEVEL_LOADED, onLevelLoaded);
         };
@@ -111,7 +110,7 @@ class p2p extends EventEmitter {
 
         this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_CHANGED, (id, data) => {
             // log('FRAG_CHANGED: '+JSON.stringify(data.frag, null, 2));
-            console.log('FRAG_CHANGED: '+data.frag.sn);
+            logger.info('FRAG_CHANGED: '+data.frag.sn);
             const sn = data.frag.sn;
             this.hlsjs.config.currPlay = sn;
             this.signaler.currentPlaySN = sn;

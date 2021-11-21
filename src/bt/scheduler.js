@@ -57,10 +57,11 @@ class Scheduler extends EventEmitter {
     }
 
     updatePlaySN(sn) {
-
-    	console.log("scheduler updatePlaySN:", sn);
-    	//rearest first只用于vod
+        //rearest first只用于vod
         const { logger } = this.engine;
+
+    	logger.debug("scheduler updatePlaySN:", sn);
+    	
         if (this.config.live) return;
         if (!this.hasPeers) return;
         let requested = [];
@@ -115,12 +116,10 @@ class Scheduler extends EventEmitter {
 
     addPeer(peer) {
         const { logger } = this.engine;
-        console.log(`add peer ${peer.remotePeerId}`);
         logger.info(`add peer ${peer.remotePeerId}`);
         this.peerMap.set(peer.remotePeerId, peer);
         this.engine.emit('peers', [...this.peerMap.keys()]);
     }
-
 
     peersHasSN(sn) {
         return this.bitCounts.has(sn);
@@ -136,7 +135,7 @@ class Scheduler extends EventEmitter {
 
         let target;
         for (let peer of this.peerMap.values()) {
-            console.log("scheduler load", peer);
+            logger.info("scheduler load", peer);
             if (peer.bitset.has(frag.sn)) {
                 target = peer;
             }
@@ -233,7 +232,9 @@ class Scheduler extends EventEmitter {
             }
             if (url && this.bufMgr.hasSegOfURL(url)) {
                 let seg = this.bufMgr.getSegByURL(url);
-                console.log("接收请求数据,现在发送:",msg, seg, seg.relurl, seg.data);
+                
+                logger.debug("发送数据 <- 接收到数据请求:",msg, seg, seg.relurl, seg.data);
+
                 dc.sendBuffer(msg.sn, seg.relurl, seg.data);
 
                 this.engine.signaler.signalerWs.send({

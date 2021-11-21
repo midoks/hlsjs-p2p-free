@@ -81,7 +81,7 @@ class FragLoader extends EventEmitter {
                     this.fetcher.reportFlow(stats, true);
                     frag.loaded = stats.loaded;
 
-                    console.log("P2P loaded time " + (stats.tload - stats.trequest) + "ms");
+                    logger.debug("P2P loaded time " + (stats.tload - stats.trequest) + "ms");
                     onSuccess(response,stats,context);
                 };
             } else {
@@ -93,7 +93,7 @@ class FragLoader extends EventEmitter {
                 //在onsucess回调中复制并缓存二进制数据
                 callbacks.onSuccess = (response, stats, context) => {       
                     if (!this.bufMgr.hasSegOfURL(frag.relurl)) {
-                        console.log("HTTP loaded time "+ frag.relurl+ " " + (stats.tload - stats.trequest) + "ms");
+                        logger.debug("HTTP loaded time " + frag.relurl + " " + (stats.tload - stats.trequest) + "ms");
                         this.bufMgr.copyAndAddBuffer(response.data, frag.relurl, frag.sn);
                     }
                     this.fetcher.reportFlow(stats, false);

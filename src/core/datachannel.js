@@ -64,7 +64,7 @@ class DataChannel extends EventEmitter {
 		});
 
 		dc.on("data",function(e) {
-			console.log("接收数据[peer]:",e);
+			logger.debug("接收数据:",e);
 			if ("string" == typeof e) {
 				logger.debug("datachannel receive string: " + e + "from " + _this.remotePeerId);
 				var r = JSON.parse(e);
@@ -146,7 +146,8 @@ class DataChannel extends EventEmitter {
 	}
 
 	sendBitField(data){
-		console.log("sendBitField:",data);
+		let logger  = this.engine.logger;
+		logger.debug("sendBitField:",data);
 		this.sendJson({
 			event: Events.DC_BITFIELD,
 			field: data
@@ -163,7 +164,8 @@ class DataChannel extends EventEmitter {
 		}
 	}
 	receiveSignal(e) {
-		console.log("接收数据-receiveSignal:",e);
+		let logger  = this.engine.logger;
+		logger.debug("接收数据-receiveSignal:",e);
 		this._datachannel.signal(e)
 	}
 
@@ -189,10 +191,10 @@ class DataChannel extends EventEmitter {
 	}
 
 	_handlePieceAck() {
-
+		let logger  = this.engine.logger;
 		if (this.uploading = !1, window.clearTimeout(this.uploadTimeout), this.uploadTimeout = null, this.rcvdReqQueue.length > 0) {
 			var e = this.rcvdReqQueue.pop();
-			console.log("_handlePieceAck:",e);
+			logger.debug("_handlePieceAck:",e);
 			this.emit(Events.DC_REQUEST, {
 				sn: e
 			})
@@ -201,7 +203,8 @@ class DataChannel extends EventEmitter {
 
 	_handleBinaryData() {
 		var e = Buffer.concat(this.bufArr);
-		console.log("_handleBinaryData::",e, e.byteLength , this.expectedSize);
+		let logger  = this.engine.logger;
+		logger.debug("_handleBinaryData::",e, e.byteLength , this.expectedSize);
 		e.byteLength == this.expectedSize && this.emit(Events.DC_RESPONSE, {
 			url: this.bufUrl,
 			sn: this.bufSN,
