@@ -2,6 +2,24 @@ const pkgJson = require('./package.json');
 const path = require('path');
 const webpack = require('webpack');
 
+const uglifyJsOptions = {
+    screwIE8: true,
+    stats: true,
+    compress: {
+        warnings: false,
+        drop_debugger: true,
+        drop_console: true
+    },
+    mangle: {
+        toplevel: true,
+        eval: true
+    },
+    output: {
+        comments: false,  // remove all comments
+        preamble: "/* A P2P-CDN supporting hls player built on WebRTC Data Channels API. @author XieTing <86755838@qq.com> <https://github.com/snowinszu> */"
+    }
+};
+
 //嵌入全局变量
 function getConstantsForConfig(type) {
     return {
@@ -9,12 +27,10 @@ function getConstantsForConfig(type) {
     };
 }
 
-
-
+// console.log(webpack)
 function getPluginsForConfig(minify = false, type) {
     // common plugins.
     const plugins = [
-        // new webpack.optimize.OccurrenceOrderPlugin(),
         new webpack.ProvidePlugin({
           process: 'process/browser',
         }),
@@ -25,10 +41,9 @@ function getPluginsForConfig(minify = false, type) {
     if (minify) {
         // minification plugins.
         return plugins.concat([
-            // new webpack.optimize.UglifyJsPlugin(uglifyJsOptions),
             new webpack.LoaderOptionsPlugin({
                 minimize: true,
-                debug: true
+                debug: false
             })
         ]);
     }
@@ -53,6 +68,23 @@ const multiConfig = [
     },
     plugins: getPluginsForConfig(),
     devtool: 'source-map',
+  },
+  {
+    name: 'prod',
+    mode: 'production',
+    output: {
+      filename: 'p2p.min.js',
+      chunkFilename: '[name].js',
+      sourceMapFilename: 'p2p.min.js.map',
+      path: path.resolve(__dirname, 'dist'),
+      publicPath: '/dist/',
+      library: 'Hls',
+      libraryTarget: 'umd',
+      libraryExport: 'default',
+      globalObject: 'this',
+    },
+    plugins: getPluginsForConfig(true),
+    devtool: 'source-map',
   }
 ];
 module.exports = (envArgs) => {
@@ -62,6 +94,13 @@ module.exports = (envArgs) => {
   let configs;
 
   configs = multiConfig;
+
+  configs["configureWebpack"] = {
+    //关闭 webpack 的性能提示
+    performance: {
+        hints:false
+    }
+  }
 
   return configs;
 };
