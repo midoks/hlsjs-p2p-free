@@ -3,6 +3,7 @@ frequency: 3
 dirfilter:
 - tmp
 - node_modules
+- dist
 ext:
 - go
 - js
