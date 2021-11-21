@@ -14,7 +14,7 @@
 <body>
 <script id="debug"></script>
 <div id="dplayer" style="width:500px;height:300px;"></div>
-
+<div id="stats"></div>
 <script type="text/javascript">
 function init(){
     const dp = new DPlayer({
@@ -25,11 +25,11 @@ function init(){
             type: 'customHls',
             customType: {
                 'customHls': function (video, player) {
-                    const ss = new Hls({
+                    const hls = new Hls({
                         debug: false,
                         // Other hlsjsConfig options provided by hls.js
                         p2pConfig: {
-                            debug: false,
+                            debug: true,
                             announce: "http://127.0.0.1:3030",
                             wsSignalerAddr: 'ws://127.0.0.1:3030/ws',
 
@@ -40,8 +40,21 @@ function init(){
                             // Other p2pConfig options provided by CDNBye http://www.cdnbye.com/en/
                         }
                     });
-                    ss.loadSource(video.src);
-                    ss.attachMedia(video);
+                    hls.loadSource(video.src);
+                    hls.attachMedia(video);
+
+                    console.log(hls);
+                    hls.engine.on('stats', function (stats) {
+                        console.log(stats);
+                        _totalP2PDownloaded = stats.totalP2PDownloaded;
+                        _totalP2PUploaded = stats.totalP2PUploaded;
+                        updateStats();
+                    }).on('peerId', function (peerId) {
+                        _peerId = peerId;
+                    }).on('peers', function (peers) {
+                        _peerNum = peers.length;
+                        updateStats();
+                    });
                 }
             }
         },
@@ -49,6 +62,12 @@ function init(){
     // console.log(dp);
 }
 // init();
+var _peerNum = 0,_totalP2PUploaded=0,_totalP2PDownloaded=0;
+function updateStats() {
+    var text = 'P2P正在为您加速' + (_totalP2PDownloaded/1024).toFixed(2)
+        + 'MB 已分享' + (_totalP2PUploaded/1024).toFixed(2) + 'MB' + ' 连接节点' + _peerNum + '个';
+    document.getElementById('stats').innerText = text
+}
 
 $('#debug').attr('src','../dist/p2p.js?v='+(new Date()).getTime());
 $('#debug').on('load', function(){

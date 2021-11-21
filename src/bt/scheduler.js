@@ -237,6 +237,7 @@ class Scheduler extends EventEmitter {
 
                 dc.sendBuffer(msg.sn, seg.relurl, seg.data);
 
+                this.engine.fetcher.reportUploaded(seg.data.byteLength);
                 this.engine.signaler.signalerWs.send({
                     action: "tranx",
                     to_peer_id: dc.remotePeerId
@@ -253,6 +254,24 @@ class Scheduler extends EventEmitter {
         .on(Events.DC_TIMEOUT, () => {
             logger.warn(`DC_TIMEOUT`);
         })
+    }
+
+    deletePeer(dc) {
+        if (this.peerMap.has(dc.remotePeerId)) {
+            dc.bitset.forEach( value => {
+                this._decreBitCounts(value);
+            });
+            this.peerMap.delete(dc.remotePeerId);
+        }
+        this.engine.emit('peers', [...this.peerMap.keys()]);
+    }
+
+    addPeer(peer) {
+        const { logger } = this.engine;
+        logger.info(`add peer ${peer.remotePeerId}`);
+        this.peerMap.set(peer.remotePeerId, peer);
+
+        this.engine.emit('peers', [...this.peerMap.keys()]);
     }
 
     _decreBitCounts(index) {

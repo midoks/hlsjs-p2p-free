@@ -69,24 +69,24 @@ const multiConfig = [
     plugins: getPluginsForConfig(),
     devtool: 'source-map',
   }
-  // ,
-  // {
-  //   name: 'prod',
-  //   mode: 'production',
-  //   output: {
-  //     filename: 'p2p.min.js',
-  //     chunkFilename: '[name].js',
-  //     sourceMapFilename: 'p2p.min.js.map',
-  //     path: path.resolve(__dirname, 'dist'),
-  //     publicPath: '/dist/',
-  //     library: 'Hls',
-  //     libraryTarget: 'umd',
-  //     libraryExport: 'default',
-  //     globalObject: 'this',
-  //   },
-  //   plugins: getPluginsForConfig(true),
-  //   devtool: 'source-map',
-  // }
+  ,
+  {
+    name: 'prod',
+    mode: 'production',
+    output: {
+      filename: 'p2p.min.js',
+      chunkFilename: '[name].js',
+      sourceMapFilename: 'p2p.min.js.map',
+      path: path.resolve(__dirname, 'dist'),
+      publicPath: '/dist/',
+      library: 'Hls',
+      libraryTarget: 'umd',
+      libraryExport: 'default',
+      globalObject: 'this',
+    },
+    plugins: getPluginsForConfig(true),
+    devtool: 'source-map',
+  }
 ];
 module.exports = (envArgs) => {
   const requestedConfigs = Object.keys(envArgs).filter(

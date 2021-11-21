@@ -26,10 +26,16 @@ class Fetcher extends EventEmitter {
 		this.browserInfo = browserInfo;
 		this.conns = 0;
 		
-		this.channelVal = urlBase64(this.engine.hlsjs.url)
+		this.channelVal = urlBase64(this.engine.hlsjs.url);
 
 		this.announceURL = this.announce + '/channel';
-		this.heartbeatURL = this.announceURL+'/'+this.channelVal+"/node/"
+		this.heartbeatURL = this.announceURL+'/'+this.channelVal+"/node/";
+
+		this.totalHTTPDownloaded = 0;
+		this.totalP2PDownloaded = 0;
+		this.httpDownloaded = 0;
+		this.p2pDownloaded = 0;
+		this.totalP2PUploaded = 0;
 	}
 
 	btAnnounce(){
@@ -69,9 +75,31 @@ class Fetcher extends EventEmitter {
 	}
 
 
+	reportUploaded(size){
+		var n = Math.round(size / 1024);
+		this.totalP2PUploaded += n;
+        this._emitStats();
+	}              
+
 	//上报数据接口
-	reportFlow(data){
-		// console.log("上报FLOW",data);
+	reportFlow(data,isP2P){
+		var n = Math.round(data.total / 1024);
+
+		if (isP2P) {
+			this.p2pDownloaded += n;
+			this.totalP2PDownloaded += n;
+		} else {
+			this.httpDownloaded += n;
+			this.totalHTTPDownloaded += n;
+		}
+		this._emitStats();
+	}
+
+	_emitStats(){
+		this.engine.emit("stats", {
+			totalP2PDownloaded: this.totalP2PDownloaded,
+			totalP2PUploaded:this.totalP2PUploaded,
+		})
 	}
 
 	increConns() {

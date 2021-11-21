@@ -26467,10 +26467,16 @@ class Fetcher extends (events_default()) {
 		this.browserInfo = browserInfo;
 		this.conns = 0;
 		
-		this.channelVal = urlBase64(this.engine.hlsjs.url)
+		this.channelVal = urlBase64(this.engine.hlsjs.url);
 
 		this.announceURL = this.announce + '/channel';
-		this.heartbeatURL = this.announceURL+'/'+this.channelVal+"/node/"
+		this.heartbeatURL = this.announceURL+'/'+this.channelVal+"/node/";
+
+		this.totalHTTPDownloaded = 0;
+		this.totalP2PDownloaded = 0;
+		this.httpDownloaded = 0;
+		this.p2pDownloaded = 0;
+		this.totalP2PUploaded = 0;
 	}
 
 	btAnnounce(){
@@ -26510,9 +26516,31 @@ class Fetcher extends (events_default()) {
 	}
 
 
+	reportUploaded(size){
+		var n = Math.round(size / 1024);
+		this.totalP2PUploaded += n;
+        this._emitStats();
+	}              
+
 	//上报数据接口
-	reportFlow(data){
-		// console.log("上报FLOW",data);
+	reportFlow(data,isP2P){
+		var n = Math.round(data.total / 1024);
+
+		if (isP2P) {
+			this.p2pDownloaded += n;
+			this.totalP2PDownloaded += n;
+		} else {
+			this.httpDownloaded += n;
+			this.totalHTTPDownloaded += n;
+		}
+		this._emitStats();
+	}
+
+	_emitStats(){
+		this.engine.emit("stats", {
+			totalP2PDownloaded: this.totalP2PDownloaded,
+			totalP2PUploaded:this.totalP2PUploaded,
+		})
 	}
 
 	increConns() {
@@ -26682,17 +26710,12 @@ class DataChannel extends (events_default()) {
 		});
 
 		dc.on('signal', data=>{
-			console.log(data);
-			try{
-				_this.emit(core_events.DC_SIGNAL, data)
-			}catch(e){
-				console.log(e);
-			}
-			// _this.emit(Events.DC_SIGNAL, data)
+			logger.debug(data);
+			_this.emit(core_events.DC_SIGNAL, data);
 		});
 
 		dc.once("connect", function(){
-			console.log(("datachannel CONNECTED to " + _this.remotePeerId));
+			logger.debug(("datachannel CONNECTED to " + _this.remotePeerId));
 			_this.connected = true;
 			_this.emit(core_events.DC_OPEN);
 			for(_this._sendPing(); _this.msgQueue.length > 0;){
@@ -26849,6 +26872,7 @@ class DataChannel extends (events_default()) {
 			sn: this.bufSN,
 			data: e
 		});
+
 		this.bufUrl = "";
 		this.bufArr = [];
 		this.expectedSize = -1;
@@ -26929,6 +26953,14 @@ class DataChannel extends (events_default()) {
 			this.send(c[f]);
 		}
 		this.recordSended(r)
+	}
+
+	destroy(){
+		window.clearInterval(this.adjustSRInterval);
+		window.clearInterval(this.pinger);
+		this._datachannel.removeAllListeners();
+		this.removeAllListeners();
+		this._datachannel.destroy()
 	}
 }
 
@@ -27216,6 +27248,7 @@ class Scheduler extends (events_default()) {
 
                 dc.sendBuffer(msg.sn, seg.relurl, seg.data);
 
+                this.engine.fetcher.reportUploaded(seg.data.byteLength);
                 this.engine.signaler.signalerWs.send({
                     action: "tranx",
                     to_peer_id: dc.remotePeerId
@@ -27232,6 +27265,24 @@ class Scheduler extends (events_default()) {
         .on(core_events.DC_TIMEOUT, () => {
             logger.warn(`DC_TIMEOUT`);
         })
+    }
+
+    deletePeer(dc) {
+        if (this.peerMap.has(dc.remotePeerId)) {
+            dc.bitset.forEach( value => {
+                this._decreBitCounts(value);
+            });
+            this.peerMap.delete(dc.remotePeerId);
+        }
+        this.engine.emit('peers', [...this.peerMap.keys()]);
+    }
+
+    addPeer(peer) {
+        const { logger } = this.engine;
+        logger.info(`add peer ${peer.remotePeerId}`);
+        this.peerMap.set(peer.remotePeerId, peer);
+
+        this.engine.emit('peers', [...this.peerMap.keys()]);
     }
 
     _decreBitCounts(index) {
@@ -27344,6 +27395,24 @@ class Tracker extends (events_default()) {
                     _this._tryConnectToPeer();
                 }, 10000);
             }
+        }).once(core_events.DC_ERROR, () => {
+                logger.warn(`datachannel error ${datachannel.channelId}`);
+                this.scheduler.deletePeer(datachannel);
+                this.DCMap.delete(datachannel.remotePeerId);
+                this.failedDCSet.add(datachannel.remotePeerId);                  //记录失败的连接
+                this._tryConnectToPeer();
+                datachannel.destroy();
+
+                this._requestMorePeers();
+
+                //更新conns
+                if (datachannel.isInitiator) {
+                    if (datachannel.connected) {                       //连接断开
+                        this.fetcher.decreConns();
+                    } else {                                           //连接失败
+                        this.fetcher.increFailConns();
+                    }
+                }
         }).once(core_events.DC_OPEN, () => {
             logger.debug("连接成功!!! - Events.DC_OPEN");
             _this.scheduler.handshakePeer(datachannel);
@@ -27460,6 +27529,18 @@ class Tracker extends (events_default()) {
         });
     }
 
+    _requestMorePeers() {
+        const { logger } = this.engine;
+        if (this.scheduler.peerMap.size <= Math.floor(this.config.neighbours/2)) {
+            this.fetcher.btGetPeers().then(json => {
+                logger.info(`_requestMorePeers ${JSON.stringify(json)}`);
+                this._handlePeers(json.peers);
+                this._tryConnectToPeer();
+            })
+        }
+    }
+
+
 	destroy() {
         window.clearInterval(this.heartbeater);
         this.heartbeater = null;
@@ -27518,67 +27599,64 @@ class FragLoader extends (events_default()) {
         frag.loadByHTTP = false;
 
 
-        try{
-            if (this.bufMgr.hasSegOfURL(frag.relurl)) {  
-             //如果命中缓存                                  
-                logger.debug(`bufMgr found seg sn ${frag.sn} url ${frag.relurl}`);
-                let seg = this.bufMgr.getSegByURL(frag.relurl);
-                let response = { url : context.url, data : seg.data }, trequest, tfirst, tload, loaded, total;
-                trequest = performance.now();
-                tfirst = tload = trequest + 50;
-                loaded = total = frag.loaded = seg.size;
-                let stats={ trequest, tfirst, tload, loaded, total, retry: 0 };
-                frag.loadByP2P = true;
-                //必须是异步回调
-                window.setTimeout(() => {                                                   
-                    this.fetcher.reportFlow(stats, true);
-                    callbacks.onSuccess(response, stats, context);
-                }, 50)
+        //如果命中缓存
+        if (this.bufMgr.hasSegOfURL(frag.relurl)) {                  
+            logger.debug(`bufMgr found seg sn ${frag.sn} url ${frag.relurl}`);
+            let seg = this.bufMgr.getSegByURL(frag.relurl);
+            let response = { url : context.url, data : seg.data }, trequest, tfirst, tload, loaded, total;
+            trequest = performance.now();
+            tfirst = tload = trequest + 50;
+            loaded = total = frag.loaded = seg.size;
+            let stats={ trequest, tfirst, tload, loaded, total, retry: 0 };
+            frag.loadByP2P = true;
+            //必须是异步回调
 
-             //如果在peers的bitmap中找到
-            } else if (this.scheduler.peersHasSN(frag.sn)) {
-                logger.info(`found sn ${frag.sn} from peers`);
-                context.frag.loadByP2P = true;
-                this.scheduler.load(context, config, callbacks);
-                 //如果P2P下载超时则立即切换到xhr下载
-                callbacks.onTimeout = (stats, context) => {                       
-                    logger.debug(`xhrLoader load ${frag.relurl} at ${frag.sn}`);
-                    frag.loadByP2P = false;
-                    frag.loadByHTTP = true;
-                    this.xhrLoader.load(context, config, callbacks);
-                };
-                const onSuccess = callbacks.onSuccess;
-                //在onsucess回调中复制并缓存二进制数据
-                callbacks.onSuccess = (response, stats, context) => {                       
-                    if (!this.bufMgr.hasSegOfURL(frag.relurl)) {
-                        this.bufMgr.copyAndAddBuffer(response.data, frag.relurl, frag.sn);
-                    }
-                    this.fetcher.reportFlow(stats, true);
-                    frag.loaded = stats.loaded;
+            response.data = response.data.buffer;
+            window.setTimeout(() => {                                                   
+                this.fetcher.reportFlow(stats, true);
+                callbacks.onSuccess(response, stats, context);
+            }, 50)
 
-                    logger.debug("P2P loaded time " + (stats.tload - stats.trequest) + "ms");
-                    onSuccess(response,stats,context);
-                };
-            } else {
-
+        //如果在peers的bitmap中找到
+        } else if (this.scheduler.peersHasSN(frag.sn)) {
+            logger.info(`found sn ${frag.sn} from peers`);
+            context.frag.loadByP2P = true;
+            this.scheduler.load(context, config, callbacks);
+             //如果P2P下载超时则立即切换到xhr下载
+            callbacks.onTimeout = (stats, context) => {                       
                 logger.debug(`xhrLoader load ${frag.relurl} at ${frag.sn}`);
-                context.frag.loadByHTTP = true;
+                frag.loadByP2P = false;
+                frag.loadByHTTP = true;
                 this.xhrLoader.load(context, config, callbacks);
-                const onSuccess = callbacks.onSuccess;
-                //在onsucess回调中复制并缓存二进制数据
-                callbacks.onSuccess = (response, stats, context) => {       
-                    if (!this.bufMgr.hasSegOfURL(frag.relurl)) {
-                        logger.debug("HTTP loaded time " + frag.relurl + " " + (stats.tload - stats.trequest) + "ms");
-                        this.bufMgr.copyAndAddBuffer(response.data, frag.relurl, frag.sn);
-                    }
-                    this.fetcher.reportFlow(stats, false);
-                    onSuccess(response,stats,context);
-                };
-            }
+            };
+            const onSuccess = callbacks.onSuccess;
+            //在onsucess回调中复制并缓存二进制数据
+            callbacks.onSuccess = (response, stats, context) => {                       
+                if (!this.bufMgr.hasSegOfURL(frag.relurl)) {
+                    this.bufMgr.copyAndAddBuffer(response.data, frag.relurl, frag.sn);
+                }
+                this.fetcher.reportFlow(stats, true);
+                frag.loaded = stats.loaded;
 
-        }catch(e){
-            console.log(e);
-        }
+                logger.debug("P2P loaded time " + (stats.tload - stats.trequest) + "ms");
+                onSuccess(response,stats,context);
+            };
+        } else {
+
+            logger.debug(`xhrLoader load ${frag.relurl} at ${frag.sn}`);
+            context.frag.loadByHTTP = true;
+            this.xhrLoader.load(context, config, callbacks);
+            const onSuccess = callbacks.onSuccess;
+            //在onsucess回调中复制并缓存二进制数据
+            callbacks.onSuccess = (response, stats, context) => {       
+                if (!this.bufMgr.hasSegOfURL(frag.relurl)) {
+                    logger.debug("HTTP loaded time " + frag.relurl + " " + (stats.tload - stats.trequest) + "ms");
+                    this.bufMgr.copyAndAddBuffer(response.data, frag.relurl, frag.sn);
+                }
+                this.fetcher.reportFlow(stats, false);
+                onSuccess(response,stats,context);
+            };
+        }    
     }
 }
 
@@ -27715,6 +27793,15 @@ const uaParserResult = (new (ua_parser_default())()).getResult();
 
 class p2p extends (events_default()) {
 
+
+    static get Events() {
+        return core_events;
+    }
+
+    static get uaParserResult() {
+        return uaParserResult;
+    }
+    
 	constructor(hlsjs, p2pConfig) {
 
         super();
@@ -27891,14 +27978,13 @@ let recommendedHlsjsConfig = {
 
 class P2PHlsjs extends (hls_default()) {
 
-    // static get P2PEvents() {
-    //     console.log("p2p:",P2PEngine.Events);
-    //     return P2PEngine.Events;
-    // }
+    static get P2PEvents() {
+        return src_p2p.Events;
+    }
 
-    // static get uaParserResult() {
-    //     return P2PEngine.uaParserResult;
-    // }
+    static get uaParserResult() {
+        return src_p2p.uaParserResult;
+    }
 
     constructor(config = {}) {
         let p2pConfig = config.p2pConfig || {};

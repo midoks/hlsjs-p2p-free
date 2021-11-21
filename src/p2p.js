@@ -5,7 +5,7 @@ import UAParser from 'ua-parser-js';
 
 import Logger from './utils/logger';
 import defaultP2PConfig from './config';
-import {Fetcher,getBrowserRTC} from './core';
+import {Fetcher,Events,getBrowserRTC} from './core';
 import {Tracker,FragLoader} from './bt';
 import BufferManager from './buffer';
 
@@ -14,6 +14,15 @@ const uaParserResult = (new UAParser()).getResult();
 
 class p2p extends EventEmitter {
 
+
+    static get Events() {
+        return Events;
+    }
+
+    static get uaParserResult() {
+        return uaParserResult;
+    }
+    
 	constructor(hlsjs, p2pConfig) {
 
         super();

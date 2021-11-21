@@ -73,6 +73,24 @@ class Tracker extends EventEmitter {
                     _this._tryConnectToPeer();
                 }, 10000);
             }
+        }).once(Events.DC_ERROR, () => {
+                logger.warn(`datachannel error ${datachannel.channelId}`);
+                this.scheduler.deletePeer(datachannel);
+                this.DCMap.delete(datachannel.remotePeerId);
+                this.failedDCSet.add(datachannel.remotePeerId);                  //记录失败的连接
+                this._tryConnectToPeer();
+                datachannel.destroy();
+
+                this._requestMorePeers();
+
+                //更新conns
+                if (datachannel.isInitiator) {
+                    if (datachannel.connected) {                       //连接断开
+                        this.fetcher.decreConns();
+                    } else {                                           //连接失败
+                        this.fetcher.increFailConns();
+                    }
+                }
         }).once(Events.DC_OPEN, () => {
             logger.debug("连接成功!!! - Events.DC_OPEN");
             _this.scheduler.handshakePeer(datachannel);
@@ -188,6 +206,18 @@ class Tracker extends EventEmitter {
             return true;
         });
     }
+
+    _requestMorePeers() {
+        const { logger } = this.engine;
+        if (this.scheduler.peerMap.size <= Math.floor(this.config.neighbours/2)) {
+            this.fetcher.btGetPeers().then(json => {
+                logger.info(`_requestMorePeers ${JSON.stringify(json)}`);
+                this._handlePeers(json.peers);
+                this._tryConnectToPeer();
+            })
+        }
+    }
+
 
 	destroy() {
         window.clearInterval(this.heartbeater);

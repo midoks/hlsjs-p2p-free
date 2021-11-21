@@ -43,17 +43,12 @@ class DataChannel extends EventEmitter {
 		});
 
 		dc.on('signal', data=>{
-			console.log(data);
-			try{
-				_this.emit(Events.DC_SIGNAL, data)
-			}catch(e){
-				console.log(e);
-			}
-			// _this.emit(Events.DC_SIGNAL, data)
+			logger.debug(data);
+			_this.emit(Events.DC_SIGNAL, data);
 		});
 
 		dc.once("connect", function(){
-			console.log(("datachannel CONNECTED to " + _this.remotePeerId));
+			logger.debug(("datachannel CONNECTED to " + _this.remotePeerId));
 			_this.connected = true;
 			_this.emit(Events.DC_OPEN);
 			for(_this._sendPing(); _this.msgQueue.length > 0;){
@@ -210,6 +205,7 @@ class DataChannel extends EventEmitter {
 			sn: this.bufSN,
 			data: e
 		});
+
 		this.bufUrl = "";
 		this.bufArr = [];
 		this.expectedSize = -1;
@@ -290,6 +286,14 @@ class DataChannel extends EventEmitter {
 			this.send(c[f]);
 		}
 		this.recordSended(r)
+	}
+
+	destroy(){
+		window.clearInterval(this.adjustSRInterval);
+		window.clearInterval(this.pinger);
+		this._datachannel.removeAllListeners();
+		this.removeAllListeners();
+		this._datachannel.destroy()
 	}
 }
 

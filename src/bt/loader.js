@@ -43,67 +43,64 @@ class FragLoader extends EventEmitter {
         frag.loadByHTTP = false;
 
 
-        try{
-            if (this.bufMgr.hasSegOfURL(frag.relurl)) {  
-             //如果命中缓存                                  
-                logger.debug(`bufMgr found seg sn ${frag.sn} url ${frag.relurl}`);
-                let seg = this.bufMgr.getSegByURL(frag.relurl);
-                let response = { url : context.url, data : seg.data }, trequest, tfirst, tload, loaded, total;
-                trequest = performance.now();
-                tfirst = tload = trequest + 50;
-                loaded = total = frag.loaded = seg.size;
-                let stats={ trequest, tfirst, tload, loaded, total, retry: 0 };
-                frag.loadByP2P = true;
-                //必须是异步回调
-                window.setTimeout(() => {                                                   
-                    this.fetcher.reportFlow(stats, true);
-                    callbacks.onSuccess(response, stats, context);
-                }, 50)
+        //如果命中缓存
+        if (this.bufMgr.hasSegOfURL(frag.relurl)) {                  
+            logger.debug(`bufMgr found seg sn ${frag.sn} url ${frag.relurl}`);
+            let seg = this.bufMgr.getSegByURL(frag.relurl);
+            let response = { url : context.url, data : seg.data }, trequest, tfirst, tload, loaded, total;
+            trequest = performance.now();
+            tfirst = tload = trequest + 50;
+            loaded = total = frag.loaded = seg.size;
+            let stats={ trequest, tfirst, tload, loaded, total, retry: 0 };
+            frag.loadByP2P = true;
+            //必须是异步回调
 
-             //如果在peers的bitmap中找到
-            } else if (this.scheduler.peersHasSN(frag.sn)) {
-                logger.info(`found sn ${frag.sn} from peers`);
-                context.frag.loadByP2P = true;
-                this.scheduler.load(context, config, callbacks);
-                 //如果P2P下载超时则立即切换到xhr下载
-                callbacks.onTimeout = (stats, context) => {                       
-                    logger.debug(`xhrLoader load ${frag.relurl} at ${frag.sn}`);
-                    frag.loadByP2P = false;
-                    frag.loadByHTTP = true;
-                    this.xhrLoader.load(context, config, callbacks);
-                };
-                const onSuccess = callbacks.onSuccess;
-                //在onsucess回调中复制并缓存二进制数据
-                callbacks.onSuccess = (response, stats, context) => {                       
-                    if (!this.bufMgr.hasSegOfURL(frag.relurl)) {
-                        this.bufMgr.copyAndAddBuffer(response.data, frag.relurl, frag.sn);
-                    }
-                    this.fetcher.reportFlow(stats, true);
-                    frag.loaded = stats.loaded;
+            response.data = response.data.buffer;
+            window.setTimeout(() => {                                                   
+                this.fetcher.reportFlow(stats, true);
+                callbacks.onSuccess(response, stats, context);
+            }, 50)
 
-                    logger.debug("P2P loaded time " + (stats.tload - stats.trequest) + "ms");
-                    onSuccess(response,stats,context);
-                };
-            } else {
-
+        //如果在peers的bitmap中找到
+        } else if (this.scheduler.peersHasSN(frag.sn)) {
+            logger.info(`found sn ${frag.sn} from peers`);
+            context.frag.loadByP2P = true;
+            this.scheduler.load(context, config, callbacks);
+             //如果P2P下载超时则立即切换到xhr下载
+            callbacks.onTimeout = (stats, context) => {                       
                 logger.debug(`xhrLoader load ${frag.relurl} at ${frag.sn}`);
-                context.frag.loadByHTTP = true;
+                frag.loadByP2P = false;
+                frag.loadByHTTP = true;
                 this.xhrLoader.load(context, config, callbacks);
-                const onSuccess = callbacks.onSuccess;
-                //在onsucess回调中复制并缓存二进制数据
-                callbacks.onSuccess = (response, stats, context) => {       
-                    if (!this.bufMgr.hasSegOfURL(frag.relurl)) {
-                        logger.debug("HTTP loaded time " + frag.relurl + " " + (stats.tload - stats.trequest) + "ms");
-                        this.bufMgr.copyAndAddBuffer(response.data, frag.relurl, frag.sn);
-                    }
-                    this.fetcher.reportFlow(stats, false);
-                    onSuccess(response,stats,context);
-                };
-            }
+            };
+            const onSuccess = callbacks.onSuccess;
+            //在onsucess回调中复制并缓存二进制数据
+            callbacks.onSuccess = (response, stats, context) => {                       
+                if (!this.bufMgr.hasSegOfURL(frag.relurl)) {
+                    this.bufMgr.copyAndAddBuffer(response.data, frag.relurl, frag.sn);
+                }
+                this.fetcher.reportFlow(stats, true);
+                frag.loaded = stats.loaded;
 
-        }catch(e){
-            console.log(e);
-        }
+                logger.debug("P2P loaded time " + (stats.tload - stats.trequest) + "ms");
+                onSuccess(response,stats,context);
+            };
+        } else {
+
+            logger.debug(`xhrLoader load ${frag.relurl} at ${frag.sn}`);
+            context.frag.loadByHTTP = true;
+            this.xhrLoader.load(context, config, callbacks);
+            const onSuccess = callbacks.onSuccess;
+            //在onsucess回调中复制并缓存二进制数据
+            callbacks.onSuccess = (response, stats, context) => {       
+                if (!this.bufMgr.hasSegOfURL(frag.relurl)) {
+                    logger.debug("HTTP loaded time " + frag.relurl + " " + (stats.tload - stats.trequest) + "ms");
+                    this.bufMgr.copyAndAddBuffer(response.data, frag.relurl, frag.sn);
+                }
+                this.fetcher.reportFlow(stats, false);
+                onSuccess(response,stats,context);
+            };
+        }    
     }
 }
 

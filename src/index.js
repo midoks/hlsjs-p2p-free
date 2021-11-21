@@ -13,14 +13,13 @@ let recommendedHlsjsConfig = {
 
 class P2PHlsjs extends Hlsjs {
 
-    // static get P2PEvents() {
-    //     console.log("p2p:",P2PEngine.Events);
-    //     return P2PEngine.Events;
-    // }
+    static get P2PEvents() {
+        return p2p.Events;
+    }
 
-    // static get uaParserResult() {
-    //     return P2PEngine.uaParserResult;
-    // }
+    static get uaParserResult() {
+        return p2p.uaParserResult;
+    }
 
     constructor(config = {}) {
         let p2pConfig = config.p2pConfig || {};

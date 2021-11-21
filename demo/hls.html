@@ -45,7 +45,7 @@ function init(){
                     hls.loadSource(video.src);
                     hls.attachMedia(video);
 
-                    hls.on('stats', function (stats) {
+                    hls.p2p.on('stats', function (stats) {
                         _totalP2PDownloaded = stats.totalP2PDownloaded;
                         _totalP2PUploaded = stats.totalP2PUploaded;
                         updateStats();
