@@ -87,7 +87,6 @@ class p2p extends EventEmitter {
             this.signaler.currentLoadingSN = data.frag.sn;
         });
 
-
         //防止重复连接ws
         this.signalTried = false;                               
         this.hlsjs.on(this.hlsjs.constructor.Events.FRAG_LOADED, (id, data) => {
@@ -125,6 +124,8 @@ class p2p extends EventEmitter {
             this.signaler.currentPlaySN = sn;
         });
 
+
+        // 捕捉错误
         this.hlsjs.on(this.hlsjs.constructor.Events.ERROR, (event, data) => {
             logger.error(`errorType ${data.type} details ${data.details} errorFatal ${data.fatal}`);
             const errDetails = this.hlsjs.constructor.ErrorDetails;
@@ -141,6 +142,8 @@ class p2p extends EventEmitter {
                     break;
                 default:
             }
+
+            this.emit('error', event, data);
         });
 
         this.hlsjs.on(this.hlsjs.constructor.Events.DESTROYING, () => {
