@@ -21,6 +21,8 @@ function init(){
         container: document.getElementById('dplayer'),
         screenshot: true,
         video: {
+            // url: 'https://vod8.wenshibaowenbei.com/20211014/B8KpeTBo/index.m3u8',
+            // url: 'https://cdn1.91pic.org/20211128/vVSQ7jcx/index.m3u8',
             url: 'https://v10.dious.cc/20211105/fqeY6Nt2/index.m3u8',
             type: 'customHls',
             customType: {
@@ -30,11 +32,11 @@ function init(){
                         // Other hlsjsConfig options provided by hls.js
                         p2pConfig: {
                             debug: true,
-                            announce: "http://127.0.0.1:3030",
-                            wsSignalerAddr: 'ws://127.0.0.1:3030/ws',
+                            // announce: "http://127.0.0.1:3030",
+                            // wsSignalerAddr: 'ws://127.0.0.1:3030/ws',
 
-                            // announce: "https://gop2p.cachecha.com",
-                            // wsSignalerAddr: 'wss://gop2p.cachecha.com/ws',
+                            announce: "https://gop2p.cachecha.com",
+                            wsSignalerAddr: 'wss://gop2p.cachecha.com/ws',
 
                             live: true,        
                             // Other p2pConfig options provided by CDNBye http://www.cdnbye.com/en/
@@ -54,6 +56,8 @@ function init(){
                     }).on('peers', function (peers) {
                         _peerNum = peers.length;
                         updateStats();
+                    }).on("error",function(event,data){
+                        console.log("Error:事件捕捉:",event,data);
                     });
                 }
             }
