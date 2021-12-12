@@ -27547,7 +27547,7 @@ class Tracker extends (events_default()) {
         if (this.scheduler.peerMap.size <= Math.floor(this.config.neighbours/2)) {
             this.fetcher.btGetPeers().then(json => {
                 logger.info(`_requestMorePeers ${JSON.stringify(json)}`);
-                this._handlePeers(json.peers);
+                this._handlePeers(json.data.peers);
                 this._tryConnectToPeer();
             });
         }
