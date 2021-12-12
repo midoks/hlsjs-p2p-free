@@ -53,8 +53,8 @@ class DataChannel extends EventEmitter {
 			_this.emit(Events.DC_OPEN);
 			for(_this._sendPing(); _this.msgQueue.length > 0;){
 				var e = _this.msgQueue.shift();
-				console.log(e);
-				// _this.emit(e.event, e);
+				// console.log(e);
+				_this.emit(e.event, e);
 			}		
 		});
 

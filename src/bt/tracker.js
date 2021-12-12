@@ -22,12 +22,6 @@ class Tracker extends EventEmitter {
         peers: Array<Object{id:string}>
          */
         this.peers = [];
-
-
-        //debug
-        // var hls = new Hls();
-        // var videoSrc = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
-        // hls.loadSource(videoSrc);
 	}
 
      set currentPlaySN(sn) {
@@ -77,7 +71,7 @@ class Tracker extends EventEmitter {
                 logger.warn(`datachannel error ${datachannel.channelId}`);
                 this.scheduler.deletePeer(datachannel);
                 this.DCMap.delete(datachannel.remotePeerId);
-                this.failedDCSet.add(datachannel.remotePeerId);                  //记录失败的连接
+                this.failedDCSet.add(datachannel.remotePeerId);//记录失败的连接
                 this._tryConnectToPeer();
                 datachannel.destroy();
 
@@ -85,9 +79,11 @@ class Tracker extends EventEmitter {
 
                 //更新conns
                 if (datachannel.isInitiator) {
-                    if (datachannel.connected) {                       //连接断开
+                    if (datachannel.connected) { 
+                        //连接断开
                         this.fetcher.decreConns();
-                    } else {                                           //连接失败
+                    } else {
+                         //连接失败
                         this.fetcher.increFailConns();
                     }
                 }
@@ -160,15 +156,16 @@ class Tracker extends EventEmitter {
             _this.peerId = json.data.id;
             logger.identifier = _this.peerId;
             this.fetcher.btHeartbeat(json.data.report_interval);
-            // this.fetcher.btStatsStart(json.report_limit);
+            this.fetcher.btGetPeers(1, function(data){
+                console.log("dddd:",data.data.peers);
+                this._handlePeers(data.data.peers);
+            });
             this.signalerWs = this._initSignalerWs();  //连上tracker后开始连接信令服务器
             this._handlePeers(json.data.peers);
             this.engine.emit('peerId', this.peerId);
         }).catch(err => {
             // console.log(err);
-        })
-
-        
+        });
 	}
 
     _handleSignal(remotePeerId, data) {
@@ -214,7 +211,7 @@ class Tracker extends EventEmitter {
                 logger.info(`_requestMorePeers ${JSON.stringify(json)}`);
                 this._handlePeers(json.peers);
                 this._tryConnectToPeer();
-            })
+            });
         }
     }
 

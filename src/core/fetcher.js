@@ -53,7 +53,7 @@ class Fetcher extends EventEmitter {
 				_this.peerId = t.data.id;
 				resolve(t);
 			}).catch(function(e) {
-				logger.error("[fetcher] btAnnounce error " + e);
+				logger.error("[fetcher] btAnnounce error: " + e);
 				reject(e);
 			})
 		})
@@ -68,10 +68,26 @@ class Fetcher extends EventEmitter {
 			}).then(function(e) {
 			}).catch(function(e) {
 				window.clearInterval(_this.heartbeater);
-				logger.error("[fetcher] btHeartbeat error " + e);
+				logger.error("[fetcher] btHeartbeat error: " + e);
 			})
-		},
-		1e3 * report_interval)
+		},1e3 * report_interval);
+	}
+
+	btGetPeers(report_interval, callback){
+		var _this = this;
+		var logger = this.engine.logger;
+		this.getPeers = window.setInterval(function() {
+			fetch(_this.heartbeatURL+_this.peerId+"/peers",{
+				method: "POST",
+			}).then(function(e) {
+				return e.json();
+			}).then(function(t) {
+				callback(t);
+			}).catch(function(e) {
+				window.clearInterval(_this.getPeers);
+				logger.error("[fetcher] btGetPeers error: " + e);
+			})
+		},1e3 * report_interval);
 	}
 
 
@@ -99,15 +115,15 @@ class Fetcher extends EventEmitter {
 		this.engine.emit("stats", {
 			totalP2PDownloaded: this.totalP2PDownloaded,
 			totalP2PUploaded:this.totalP2PUploaded,
-		})
+		});
 	}
 
 	increConns() {
-		this.conns++
+		this.conns++;
 	}
 
 	decreConns(){
-		this.conns++
+		this.conns++;
 	}
 }
 
