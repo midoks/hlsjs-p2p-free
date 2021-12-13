@@ -27378,13 +27378,16 @@ class Tracker extends (events_default()) {
     _tryConnectToPeer() {
         const { logger } = this.engine;
         if (this.peers.length === 0) return;
-        let remotePeerId = this.peers.pop().id;
-        logger.info(`tryConnectToPeer ${remotePeerId}`);
-        let datachannel = new core_datachannel(this.engine, this.peerId, remotePeerId, true, this.config);
+        // let remotePeerId = this.peers.pop().id;
+        for (var i=0; i <= this.peers.length; i++) {
+            logger.info(`tryConnectToPeer ${remotePeerId}`);
+            var remotePeerId = this.peers.pop().id;
+            let datachannel = new core_datachannel(this.engine, this.peerId, remotePeerId, true, this.config);
 
-        //将对等端Id作为键
-        this.DCMap.set(remotePeerId, datachannel);                                 
-        this._setupDC(datachannel);
+            //将对等端Id作为键
+            this.DCMap.set(remotePeerId, datachannel);                                 
+            this._setupDC(datachannel);
+        }
     }
 
     _setupDC(datachannel) {
@@ -27494,12 +27497,8 @@ class Tracker extends (events_default()) {
             _this.peerId = json.data.id;
             logger.identifier = _this.peerId;
             this.fetcher.btHeartbeat(json.data.report_interval);
-            this.fetcher.btGetPeers(1, function(data){
-                console.log("dddd:",data.data.peers);
-                this._handlePeers(data.data.peers);
-            });
+            this._requestMorePeers();
             this.signalerWs = this._initSignalerWs();  //连上tracker后开始连接信令服务器
-            this._handlePeers(json.data.peers);
             this.engine.emit('peerId', this.peerId);
         }).catch(err => {
             // console.log(err);
@@ -27544,13 +27543,11 @@ class Tracker extends (events_default()) {
 
     _requestMorePeers() {
         const { logger } = this.engine;
-        if (this.scheduler.peerMap.size <= Math.floor(this.config.neighbours/2)) {
-            this.fetcher.btGetPeers().then(json => {
-                logger.info(`_requestMorePeers ${JSON.stringify(json)}`);
-                this._handlePeers(json.data.peers);
-                this._tryConnectToPeer();
-            });
-        }
+        this.fetcher.btGetPeers(3, function(json){
+            logger.info(`_requestMorePeers ${JSON.stringify(json)}`);
+            this._handlePeers(json.data.peers);
+            this._tryConnectToPeer();
+        });
     }
 
 
