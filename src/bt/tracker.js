@@ -22,6 +22,12 @@ class Tracker extends EventEmitter {
         peers: Array<Object{id:string}>
          */
         this.peers = [];
+
+
+        //debug
+        // var hls = new Hls();
+        // var videoSrc = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
+        // hls.loadSource(videoSrc);
 	}
 
      set currentPlaySN(sn) {
@@ -40,16 +46,28 @@ class Tracker extends EventEmitter {
     _tryConnectToPeer() {
         const { logger } = this.engine;
         if (this.peers.length === 0) return;
-        // let remotePeerId = this.peers.pop().id;
-        for (var i=0; i <= this.peers.length; i++) {
-            logger.info(`tryConnectToPeer ${remotePeerId}`);
+
+        console.log("_tryConnectToPeer", this.peers,this.peers.length );
+        let plen = this.peers.length;
+        for (var i = 0; i < plen; i++) {
             var remotePeerId = this.peers.pop().id;
-            let datachannel = new DataChannel(this.engine, this.peerId, remotePeerId, true, this.config);
+
+            console.log('tryConnectToPeer:',remotePeerId, this.peerId);
+            logger.info(`tryConnectToPeer ${remotePeerId}`);
+            var datachannel = new DataChannel(this.engine, this.peerId, remotePeerId, true, this.config);
 
             //将对等端Id作为键
             this.DCMap.set(remotePeerId, datachannel);                                 
             this._setupDC(datachannel);
         }
+
+        // var remotePeerId = this.peers.pop().id;
+        // logger.info(`tryConnectToPeer ${remotePeerId}`);
+        // var datachannel = new DataChannel(this.engine, this.peerId, remotePeerId, true, this.config);
+
+        // //将对等端Id作为键
+        // this.DCMap.set(remotePeerId, datachannel);                                 
+        // this._setupDC(datachannel);
     }
 
     _setupDC(datachannel) {
@@ -74,7 +92,7 @@ class Tracker extends EventEmitter {
                 logger.warn(`datachannel error ${datachannel.channelId}`);
                 this.scheduler.deletePeer(datachannel);
                 this.DCMap.delete(datachannel.remotePeerId);
-                this.failedDCSet.add(datachannel.remotePeerId);//记录失败的连接
+                this.failedDCSet.add(datachannel.remotePeerId);                  //记录失败的连接
                 this._tryConnectToPeer();
                 datachannel.destroy();
 
@@ -82,11 +100,9 @@ class Tracker extends EventEmitter {
 
                 //更新conns
                 if (datachannel.isInitiator) {
-                    if (datachannel.connected) { 
-                        //连接断开
+                    if (datachannel.connected) {                       //连接断开
                         this.fetcher.decreConns();
-                    } else {
-                         //连接失败
+                    } else {                                           //连接失败
                         this.fetcher.increFailConns();
                     }
                 }
@@ -159,12 +175,15 @@ class Tracker extends EventEmitter {
             _this.peerId = json.data.id;
             logger.identifier = _this.peerId;
             this.fetcher.btHeartbeat(json.data.report_interval);
-            this._requestMorePeers();
+            // this.fetcher.btStatsStart(json.report_limit);
             this.signalerWs = this._initSignalerWs();  //连上tracker后开始连接信令服务器
+            this._handlePeers(json.data.peers);
             this.engine.emit('peerId', this.peerId);
         }).catch(err => {
             // console.log(err);
-        });
+        })
+
+        
 	}
 
     _handleSignal(remotePeerId, data) {
@@ -205,11 +224,13 @@ class Tracker extends EventEmitter {
 
     _requestMorePeers() {
         const { logger } = this.engine;
-        this.fetcher.btGetPeers(3, function(json){
-            logger.info(`_requestMorePeers ${JSON.stringify(json)}`);
-            this._handlePeers(json.data.peers);
-            this._tryConnectToPeer();
-        });
+        if (this.scheduler.peerMap.size <= Math.floor(this.config.neighbours/2)) {
+            this.fetcher.btGetPeers().then(json => {
+                logger.info(`_requestMorePeers ${JSON.stringify(json)}`);
+                this._handlePeers(json.peers);
+                this._tryConnectToPeer();
+            })
+        }
     }
 
 
