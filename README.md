@@ -17,5 +17,5 @@ with
 
 # 添加Tag
 ```
-git tag -a 0.0.0.5 -m "优化"
+git tag -a 0.0.0.6 -m "优化"
 ```
