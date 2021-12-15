@@ -27520,13 +27520,13 @@ class Tracker extends (events_default()) {
             logger.info(`announceURL response ${JSON.stringify(json)}`)
             _this.peerId = json.data.id;
             logger.identifier = _this.peerId;
-            this.fetcher.btHeartbeat(json.data.report_interval);
+            _this.fetcher.btHeartbeat(json.data.report_interval);
 
-            this.signalerWs = this._initSignalerWs();  //连上tracker后开始连接信令服务器
-            this._handlePeers(json.data.peers);
-            this.engine.emit('peerId', this.peerId);
+            _this.signalerWs = _this._initSignalerWs();  //连上tracker后开始连接信令服务器
+            _this._handlePeers(json.data.peers);
+            _this.engine.emit('peerId', _this.peerId);
 
-            this._requestMorePeers();
+            _this._requestMorePeers();
         }).catch(err => {
             // console.log(err);
         })
@@ -27582,9 +27582,10 @@ class Tracker extends (events_default()) {
 
     _requestMorePeers() {
         const { logger } = this.engine;
+        var _this = this;
         this.fetcher.btPPeers(3).then(json => {
             logger.info(`_requestMorePeers ${JSON.stringify(json)}`);
-            this._handlePeers(json.data.peers);
+            _this._handlePeers(json.data.peers);
         });   
     }
 
