@@ -26494,7 +26494,7 @@ class Fetcher extends (events_default()) {
 				_this.peerId = t.data.id;
 				resolve(t);
 			}).catch(function(e) {
-				logger.error("[fetcher] btAnnounce error: " + e);
+				logger.error("[fetcher] btAnnounce error " + e);
 				reject(e);
 			})
 		})
@@ -26509,9 +26509,10 @@ class Fetcher extends (events_default()) {
 			}).then(function(e) {
 			}).catch(function(e) {
 				window.clearInterval(_this.heartbeater);
-				logger.error("[fetcher] btHeartbeat error: " + e);
+				logger.error("[fetcher] btHeartbeat error " + e);
 			})
-		},1e3 * report_interval);
+		},
+		1e3 * report_interval)
 	}
 
 	btGetPeers(report_interval, callback){
@@ -26530,6 +26531,22 @@ class Fetcher extends (events_default()) {
 			})
 		},1e3 * report_interval);
 	}
+
+	btPPeers(){
+		var _this = this, logger = this.engine.logger;
+		return new Promise(function(resolve, reject) {
+			fetch(_this.heartbeatURL+_this.peerId+"/peers", {
+				method: "POST"
+			}).then(function(e) {
+				return e.json()
+			}).then(function(t) {
+				resolve(t);
+			}).catch(function(e) {
+				logger.error("[fetcher] btAnnounce error " + e);
+				reject(e);
+			})
+		})
+	} 
 
 
 	reportUploaded(size){
@@ -26556,15 +26573,15 @@ class Fetcher extends (events_default()) {
 		this.engine.emit("stats", {
 			totalP2PDownloaded: this.totalP2PDownloaded,
 			totalP2PUploaded:this.totalP2PUploaded,
-		});
+		})
 	}
 
 	increConns() {
-		this.conns++;
+		this.conns++
 	}
 
 	decreConns(){
-		this.conns++;
+		this.conns++
 	}
 }
 
@@ -27360,6 +27377,12 @@ class Tracker extends (events_default()) {
         peers: Array<Object{id:string}>
          */
         this.peers = [];
+
+
+        //debug
+        // var hls = new Hls();
+        // var videoSrc = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
+        // hls.loadSource(videoSrc);
 	}
 
      set currentPlaySN(sn) {
@@ -27378,16 +27401,19 @@ class Tracker extends (events_default()) {
     _tryConnectToPeer() {
         const { logger } = this.engine;
         if (this.peers.length === 0) return;
-        // let remotePeerId = this.peers.pop().id;
-        for (var i=0; i <= this.peers.length; i++) {
-            logger.info(`tryConnectToPeer ${remotePeerId}`);
+
+        let plen = this.peers.length;
+        for (var i = 0; i < plen; i++) {
             var remotePeerId = this.peers.pop().id;
-            let datachannel = new core_datachannel(this.engine, this.peerId, remotePeerId, true, this.config);
+
+            logger.info(`tryConnectToPeer ${remotePeerId}`);
+            var datachannel = new core_datachannel(this.engine, this.peerId, remotePeerId, true, this.config);
 
             //将对等端Id作为键
             this.DCMap.set(remotePeerId, datachannel);                                 
             this._setupDC(datachannel);
         }
+
     }
 
     _setupDC(datachannel) {
@@ -27412,7 +27438,7 @@ class Tracker extends (events_default()) {
                 logger.warn(`datachannel error ${datachannel.channelId}`);
                 this.scheduler.deletePeer(datachannel);
                 this.DCMap.delete(datachannel.remotePeerId);
-                this.failedDCSet.add(datachannel.remotePeerId);//记录失败的连接
+                this.failedDCSet.add(datachannel.remotePeerId);                  //记录失败的连接
                 this._tryConnectToPeer();
                 datachannel.destroy();
 
@@ -27420,11 +27446,9 @@ class Tracker extends (events_default()) {
 
                 //更新conns
                 if (datachannel.isInitiator) {
-                    if (datachannel.connected) { 
-                        //连接断开
+                    if (datachannel.connected) {                       //连接断开
                         this.fetcher.decreConns();
-                    } else {
-                         //连接失败
+                    } else {                                           //连接失败
                         this.fetcher.increFailConns();
                     }
                 }
@@ -27497,12 +27521,17 @@ class Tracker extends (events_default()) {
             _this.peerId = json.data.id;
             logger.identifier = _this.peerId;
             this.fetcher.btHeartbeat(json.data.report_interval);
-            this._requestMorePeers();
+
             this.signalerWs = this._initSignalerWs();  //连上tracker后开始连接信令服务器
+            this._handlePeers(json.data.peers);
             this.engine.emit('peerId', this.peerId);
+
+            this._requestMorePeers();
         }).catch(err => {
             // console.log(err);
-        });
+        })
+
+        
 	}
 
     _handleSignal(remotePeerId, data) {
@@ -27525,10 +27554,20 @@ class Tracker extends (events_default()) {
     }
 
     _handlePeers(peers) {
+        var _this = this;
+        var isHave = function(p){
+            for (var i = 0; i < _this.peers.length; i++) {
+                if (p.id == _this.peers[i].id){
+                    return true;
+                }
+            }
+            return false;
+        }
+
         for(let peer of peers) {
-            this.peers.push({
-                id: peer.id,
-            })
+            if (!isHave(peer)){
+                this.peers.push({id: peer.id,});
+            }
         }
         //过滤掉已经连接的节点和连接失败的节点
         this.peers = this.peers.filter(node => {
@@ -27543,11 +27582,10 @@ class Tracker extends (events_default()) {
 
     _requestMorePeers() {
         const { logger } = this.engine;
-        this.fetcher.btGetPeers(3, function(json){
+        this.fetcher.btPPeers(3).then(json => {
             logger.info(`_requestMorePeers ${JSON.stringify(json)}`);
             this._handlePeers(json.data.peers);
-            this._tryConnectToPeer();
-        });
+        });   
     }
 
 

@@ -47,12 +47,10 @@ class Tracker extends EventEmitter {
         const { logger } = this.engine;
         if (this.peers.length === 0) return;
 
-        console.log("_tryConnectToPeer", this.peers,this.peers.length );
         let plen = this.peers.length;
         for (var i = 0; i < plen; i++) {
             var remotePeerId = this.peers.pop().id;
 
-            console.log('tryConnectToPeer:',remotePeerId, this.peerId);
             logger.info(`tryConnectToPeer ${remotePeerId}`);
             var datachannel = new DataChannel(this.engine, this.peerId, remotePeerId, true, this.config);
 
@@ -61,13 +59,6 @@ class Tracker extends EventEmitter {
             this._setupDC(datachannel);
         }
 
-        // var remotePeerId = this.peers.pop().id;
-        // logger.info(`tryConnectToPeer ${remotePeerId}`);
-        // var datachannel = new DataChannel(this.engine, this.peerId, remotePeerId, true, this.config);
-
-        // //将对等端Id作为键
-        // this.DCMap.set(remotePeerId, datachannel);                                 
-        // this._setupDC(datachannel);
     }
 
     _setupDC(datachannel) {
@@ -175,10 +166,12 @@ class Tracker extends EventEmitter {
             _this.peerId = json.data.id;
             logger.identifier = _this.peerId;
             this.fetcher.btHeartbeat(json.data.report_interval);
-            // this.fetcher.btStatsStart(json.report_limit);
+
             this.signalerWs = this._initSignalerWs();  //连上tracker后开始连接信令服务器
             this._handlePeers(json.data.peers);
             this.engine.emit('peerId', this.peerId);
+
+            this._requestMorePeers();
         }).catch(err => {
             // console.log(err);
         })
@@ -206,10 +199,20 @@ class Tracker extends EventEmitter {
     }
 
     _handlePeers(peers) {
+        var _this = this;
+        var isHave = function(p){
+            for (var i = 0; i < _this.peers.length; i++) {
+                if (p.id == _this.peers[i].id){
+                    return true;
+                }
+            }
+            return false;
+        }
+
         for(let peer of peers) {
-            this.peers.push({
-                id: peer.id,
-            })
+            if (!isHave(peer)){
+                this.peers.push({id: peer.id,});
+            }
         }
         //过滤掉已经连接的节点和连接失败的节点
         this.peers = this.peers.filter(node => {
@@ -224,13 +227,10 @@ class Tracker extends EventEmitter {
 
     _requestMorePeers() {
         const { logger } = this.engine;
-        if (this.scheduler.peerMap.size <= Math.floor(this.config.neighbours/2)) {
-            this.fetcher.btGetPeers().then(json => {
-                logger.info(`_requestMorePeers ${JSON.stringify(json)}`);
-                this._handlePeers(json.peers);
-                this._tryConnectToPeer();
-            })
-        }
+        this.fetcher.btPPeers(3).then(json => {
+            logger.info(`_requestMorePeers ${JSON.stringify(json)}`);
+            this._handlePeers(json.data.peers);
+        });   
     }
 
 
