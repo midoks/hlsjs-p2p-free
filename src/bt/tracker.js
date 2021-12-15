@@ -22,12 +22,6 @@ class Tracker extends EventEmitter {
         peers: Array<Object{id:string}>
          */
         this.peers = [];
-
-
-        //debug
-        // var hls = new Hls();
-        // var videoSrc = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
-        // hls.loadSource(videoSrc);
 	}
 
      set currentPlaySN(sn) {
